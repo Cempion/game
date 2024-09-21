@@ -142,7 +142,11 @@
     pushq \param5
 .endm
 
-.macro CHECK_WINDOWS_FAILURE error_code
+.macro SHADOW_SPACE
+    sub $32, %rsp                           # allocate shadow space (i dont like shadow space)
+.endm
+
+.macro CHECK_RETURN_FAILURE error_code
     cmp $0, %rax
     jnz 1f
 
