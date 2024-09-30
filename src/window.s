@@ -50,9 +50,9 @@ has_window: .byte 0
 
 create_window:
     PROLOGUE
+    SHADOW_SPACE                            # allocate for all subroutines in this method
 
     PARAMS1 $0
-    SHADOW_SPACE
     call GetModuleHandleA                   # get handle for this program
     CHECK_RETURN_FAILURE $2
 
@@ -68,7 +68,6 @@ create_window:
     movq %rax, 24(%rcx)                     # hInstance
     movq %rdx, 64(%rcx)                     # lpszClassName
 
-    SHADOW_SPACE
     call RegisterClassExA                   # register window class
     CHECK_RETURN_FAILURE $3
 
@@ -82,6 +81,7 @@ create_window:
     PARAMS12 $0, %rax, %r8, $0x00CF0000, $100, $100, $1920, $1080, $0, $0, $0, $0
     SHADOW_SPACE
     call CreateWindowExA                    # create window
+    CLEAN_SHADOW
     CHECK_RETURN_FAILURE $4
 
     movq %rax, window_handle(%rip)          # store window handle   
@@ -91,7 +91,6 @@ create_window:
     #----------------------------------------------------------------------------------------------------------   
 
     PARAMS1 window_handle(%rip)
-    SHADOW_SPACE
     call GetDC
     CHECK_RETURN_FAILURE $5
 
@@ -104,14 +103,12 @@ create_window:
     leaq pixel_format(%rip), %rdx           # load pixel format pointer
 
     PARAMS2 %rax, %rdx
-    SHADOW_SPACE
     call ChoosePixelFormat                  # choose valid pixel format
     CHECK_RETURN_FAILURE $6
 
     leaq pixel_format(%rip), %r8            # load pixel format pointer
 
     PARAMS3 device_context(%rip), %rax, %r8
-    SHADOW_SPACE
     call SetPixelFormat                     # set pixel format
     CHECK_RETURN_FAILURE $7
 
@@ -120,14 +117,12 @@ create_window:
     #----------------------------------------------------------------------------------------------------------
 
     PARAMS1 device_context(%rip)
-    SHADOW_SPACE
     call wglCreateContext                   # create context
     CHECK_RETURN_FAILURE $8
 
     movq %rax, opengl_context(%rip)         # store opengl context
 
     PARAMS2 device_context(%rip), %rax
-    SHADOW_SPACE
     call wglMakeCurrent                     # make current
     CHECK_RETURN_FAILURE $9
 
@@ -136,7 +131,6 @@ create_window:
     #----------------------------------------------------------------------------------------------------------
 
     PARAMS2 window_handle(%rip), $1
-    SHADOW_SPACE
     call ShowWindow
 
     movb $1, has_window(%rip)               # set to true             
@@ -145,6 +139,7 @@ create_window:
 
 poll_events:
     PROLOGUE
+    SHADOW_SPACE                        # allocate for all calls in this subroutine
 
     sub $8, %rsp                        # align stack
 
@@ -158,17 +153,16 @@ poll_events:
         PARAMS5 %rcx, window_handle(%rip), $0, $0, $1
         SHADOW_SPACE
         call PeekMessageA                   # get msg without blocking
+        CLEAN_SHADOW
 
         cmp $0, %rax                        # if 0 (no msg's in queue)
         jz poll_events_end                  # end loop
 
         # dispatch msg event
         leaq msg_class(%rip), %rcx          # get pointer to msg class
-        SHADOW_SPACE
         call TranslateMessage               # translate key msg's
 
         leaq msg_class(%rip), %rcx          # get pointer to msg class
-        SHADOW_SPACE
         call DispatchMessageA               # dispatch msg
 
         jmp poll_events_loop
@@ -178,6 +172,7 @@ poll_events:
 
 event_handling:
     PROLOGUE
+    SHADOW_SPACE
 
     cmp $2, %rdx                            # wm_destroy
     je wm_destroy
@@ -186,8 +181,8 @@ event_handling:
     je wm_lbuttondown
 
     default:
-        SHADOW_SPACE
         call DefWindowProcA
+
 
     event_end:
     EPILOGUE
@@ -200,7 +195,6 @@ wm_lbuttondown:
     mov $0, %rax
 
     lea lbuttondown(%rip), %rcx
-    SHADOW_SPACE
     call printf
 
     jmp event_end

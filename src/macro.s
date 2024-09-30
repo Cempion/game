@@ -10,6 +10,24 @@
     ret
 .endm
 
+.macro FREE_REGISTERS
+    sub $8, %rsp
+    push %rbx
+    push %r12
+    push %r13
+    push %r14
+    push %r15
+.endm
+
+.macro RESTORE_REGISTERS
+    pop %r15
+    pop %r14
+    pop %r13
+    pop %r12
+    pop %rbx
+    add $8, %rsp
+.endm
+
 # macro for passing parameters following the windows convention
 
 .macro PARAMS1 param1
@@ -146,12 +164,37 @@
     sub $32, %rsp                           # allocate shadow space (i dont like shadow space)
 .endm
 
+.macro CLEAN_SHADOW
+    add $32, %rsp                           # clean up shadow space (i dont like shadow space)
+.endm
+
 .macro CHECK_RETURN_FAILURE error_code
     cmp $0, %rax
-    jnz 1f
+    jnz end_\@
 
     PARAMS1 \error_code
     call exit
 
-    1:
+    end_\@:
+.endm
+
+.macro LOOP_VALUE value, max
+    movq \value, %rax                       # Move the value to rax for div
+    movq $0, %rdx                           # Clear rdx
+    cqto                                    # Sign extend rax to rdx:rax for division
+    idiv \max                               # Divide rdx:rax by range, quotient in rax, remainder in rdx
+
+    cmpq $0, %rdx                           # if result is greater or equal to 0
+    jge end_\@                              # end macro
+
+    addq \max, %rdx                         # correct negative number
+
+    end_\@: # end
+    movq %rdx, \value                       # return result
+.endm
+
+.macro RANDOM dest
+    loop_\@:
+    RDRAND \dest
+    jnc loop_\@
 .endm
