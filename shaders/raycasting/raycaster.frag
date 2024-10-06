@@ -1,12 +1,10 @@
 
 # version 330 core // glsl version
 
-in vec2 texPos;
+in vec3 rayTarget;
 
 out vec4 color;
 
-sampler2D scene;
-
 void main() {
-    color = vec4(texPos, 0.5, 1);
+    color = vec4(rayTarget, 1);
 }

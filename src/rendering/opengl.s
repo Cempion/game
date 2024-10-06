@@ -2,6 +2,8 @@
 .equ GL_FALSE, 0
 .equ GL_TRUE, 1
 
+.equ GL_COLOR_BUFFER_BIT, 0x00004000
+
 .equ GL_TRIANGLE_STRIP, 0x0005
 
 .equ GL_FRAGMENT_SHADER, 0x8B30
@@ -18,6 +20,17 @@
 .equ GL_TEXTURE_2D, 0x0DE1
 .equ GL_RGB, 0x1907
 .equ GL_UNSIGNED_BYTE, 0x1401
+.equ GL_TEXTURE0, 0x84c0
+
+.equ GL_TEXTURE_MIN_FILTER, 0x2801
+.equ GL_TEXTURE_MAG_FILTER, 0x2800
+.equ GL_TEXTURE_WRAP_S, 0x2802
+.equ GL_TEXTURE_WRAP_T, 0x2803
+.equ GL_LINEAR, 0x2601
+.equ GL_NEAREST, 0x2600
+.equ GL_REPEAT, 0x2901
+.equ GL_CLAMP_TO_BORDER, 0x812D
+.equ GL_CLAMP_TO_EDGE, 0x812F
 
 .equ GL_FRAMEBUFFER, 0x8D40
 .equ GL_COLOR_ATTACHMENT0, 0x8CE0
@@ -39,6 +52,8 @@ glLinkProgram:              .asciz "        glLinkProgram"
 glGetProgramiv:             .asciz "        glGetProgramiv"
 glGetProgramInfoLog:        .asciz "        glGetProgramInfoLog"
 glUseProgram:               .asciz "        glUseProgram"
+glGetUniformLocation:       .asciz "        glGetUniformLocation"
+glProgramUniform1i:         .asciz "        glProgramUniform1i"
 
 glGenBuffers:               .asciz "        glGenBuffers"
 glBindBuffer:               .asciz "        glBindBuffer"
@@ -48,6 +63,8 @@ glGenVertexArrays:          .asciz "        glGenVertexArrays"
 glBindVertexArray:          .asciz "        glBindVertexArray"
 glVertexAttribPointer:      .asciz "        glVertexAttribPointer"
 glEnableVertexAttribArray:  .asciz "        glEnableVertexAttribArray"
+
+glActiveTexture:            .asciz "        glActiveTexture"
 
 glGenFramebuffers:          .asciz "        glGenFramebuffers"
 glBindFramebuffer:          .asciz "        glBindFramebuffer"
@@ -93,6 +110,8 @@ LoadOpenGlMethods:
     LOAD_METHOD glGetProgramiv
     LOAD_METHOD glGetProgramInfoLog
     LOAD_METHOD glUseProgram
+    LOAD_METHOD glGetUniformLocation
+    LOAD_METHOD glProgramUniform1i
 
     LOAD_METHOD glGenBuffers
     LOAD_METHOD glBindBuffer
@@ -102,6 +121,8 @@ LoadOpenGlMethods:
     LOAD_METHOD glBindVertexArray
     LOAD_METHOD glVertexAttribPointer
     LOAD_METHOD glEnableVertexAttribArray
+
+    LOAD_METHOD glActiveTexture
 
     LOAD_METHOD glGenFramebuffers
     LOAD_METHOD glBindFramebuffer

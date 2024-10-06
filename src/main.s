@@ -9,12 +9,6 @@
 
 hello_world: .asciz "Hello World!\n"
 
-clear_color:
-    .float 0.0 # red
-    .float 1.0 # green
-    .float 0.8 # blue
-    .float 0.0 # alpha
-
 .equ WFC_WIDTH, 20
 .equ WFC_HEIGHT, 20
 .equ WFC_TILE_COUNT, 400

@@ -1,10 +1,6 @@
 
 .data
 
-wglCreateContextAttribsARB_Name: .asciz "wglCreateContextAttribsARB"
-
-wglCreateContextAttribsARB: .quad 0
-
 window_class_name: .asciz "myclass"
 window_class:     
     .long 80                       # size in bytes
@@ -40,6 +36,8 @@ pixel_format:
     .byte 0                         # bReserved: reserved
     .long 0, 0, 0                   # dwLayerMask, dwVisibleMask, dwDamageMask
 
+wglCreateContextAttribsARB: .asciz "        wglCreateContextAttribsARB"
+
 context_attribList:
     .long 0x2091        # WGL_CONTEXT_MAJOR_VERSION_ARB
     .long 4             # Major version 3
@@ -53,6 +51,9 @@ window_handle: .quad 0
 device_context: .quad 0
 opengl_context: .quad 0
 
+screen_width: .quad 0
+screen_height: .quad 0
+
 has_window: .byte 0
 
 .text
@@ -62,6 +63,24 @@ has_window: .byte 0
 CreateWindow:
     PROLOGUE
     SHADOW_SPACE                                        # allocate for all subroutines in this method
+
+    #----------------------------------------------------------------------------------------------------------
+    # get screen width and height
+    #----------------------------------------------------------------------------------------------------------
+
+    # SM_CXSCREEN
+    PARAMS1 $0
+    call GetSystemMetrics
+    movq %rax, screen_width(%rip)                       # save screen width
+
+    # SM_CYSCREEN
+    PARAMS1 $1
+    call GetSystemMetrics
+    movq %rax, screen_height(%rip)                      # save screen height
+
+    #----------------------------------------------------------------------------------------------------------
+    # get device handle
+    #----------------------------------------------------------------------------------------------------------
 
     PARAMS1 $0
     call GetModuleHandleA                               # get handle for this program
@@ -89,7 +108,8 @@ CreateWindow:
     leaq window_title(%rip), %r8                        # load pointer
 
     # pass parameters
-    PARAMS12 $0, %rax, %r8, $0x00CF0000, $100, $100, $1000, $1000, $0, $0, $0, $0
+    # dwExStyle, class name, window title, dwStyle (topmost | layered | popup), x, y, width, height, parent, menu, instance, param
+    PARAMS12 $0, %rax, %r8, $0x80080008, $0, $0, screen_width(%rip), screen_height(%rip), $0, $0, $0, $0
     SHADOW_SPACE
     call CreateWindowExA                                # create window
     CLEAN_SHADOW
@@ -142,10 +162,10 @@ CreateWindow:
 
     # get wglCreateContextAttribsARB
 
-    leaq wglCreateContextAttribsARB_Name(%rip), %rcx
+    leaq wglCreateContextAttribsARB(%rip), %rcx
+    add $8, %rcx                                        # offset to the name
     call wglGetProcAddress                              # get pointer to wglCreateContextAttribsARB
     CHECK_RETURN_FAILURE $108
-
     movq %rax, wglCreateContextAttribsARB(%rip)         # store pointer to wglCreateContextAttribsARB
 
     # delete temporary context
@@ -215,6 +235,9 @@ HandleEvent:
     cmp $2, %rdx                            # wm_destroy
     je wm_destroy
 
+    cmp $0x0100, %rdx                       # wm_keydown
+    je wm_keydown
+
     cmp $0x0201, %rdx                       # wm_lbuttondown
     je wm_lbuttondown
 
@@ -228,6 +251,15 @@ HandleEvent:
 wm_destroy:
     movq $0, has_window(%rip)               # set to false
     jmp default
+
+wm_keydown:
+    cmp $0x100, %edx                        # if esc key was not pressed
+    jne event_end                           # do nothing
+
+    PARAMS1 window_handle(%rip)
+    call DestroyWindow                      # destroy window
+
+    jmp event_end
 
 wm_lbuttondown:
     mov $0, %rax

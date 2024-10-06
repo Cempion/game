@@ -8,12 +8,16 @@
 .equ VIEW_HEIGHT, 9
 
 .data
+minus_one: .float -1
 
-render_shader_program: .quad 0 # the shader program responsible for rendering the game to the render texture (casts rays & stuff)
+render_shader_program: .quad 0 # the shader program responsible for rendering the game to the scene texture (casts rays & stuff)
+display_shader_program: .quad 0 # the shader program responsible for rendering the scene to the screen
 
-render_vao: .quad 0 # the vertex array object used while doing a rendering draw call
-
+full_vao: .quad 0 # the vertex array object used while doing a full screen draw call
 full_vbo: .quad 0 # the vertex buffer object containing a square that represents the entire screen
+
+display_vao: .quad 0 # the vertex array object used while rendering the scene to the screen
+display_vbo: .quad 0 # the vertex buffer object containing the square to display the scene to the screen
 
 # xPos, yPos, xTexPos, yTexPos : 64 bytes in total
 vbo_data:
@@ -23,11 +27,17 @@ vbo_data:
     .float  1.0,  1.0, 1, 1
 
 render_fbo: .quad 0 # the framebuffer object used to render the scene too.
-render_tex_2d: .quad 0 # the 2d texture used to render the scene in the render fbo.
+scene_tex: .quad 0 # the 2d texture used to render the scene in the render fbo.
 
 # 8 spaces to make space for a quad
-pass_vert_shader:       .asciz "        shaders\\vertex\\pass.vert"
-display_frag_shader:    .asciz "        shaders\\fragment\\display.frag"
+raycaster_vert_shader:  .asciz "        shaders\\raycasting\\raycaster.vert"
+raycaster_frag_shader:  .asciz "        shaders\\raycasting\\raycaster.frag"
+
+pass_vert_shader:       .asciz "        shaders\\pass.vert"
+display_frag_shader:    .asciz "        shaders\\display.frag"
+
+# uniform names
+scene_uniform: .asciz "scene"
 
 .text
 
@@ -48,6 +58,35 @@ SetupRenderer:
     # Shaders
     #----------------------------------------------------------------------------------------------------------
 
+    # make render shaders & program
+
+    # make raycaster vertex shader
+    leaq raycaster_vert_shader(%rip), %rcx
+    add $8, %rcx                            # since first 8 bytes are the shader name
+    movq $GL_VERTEX_SHADER, %rdx
+    call MakeShader
+    movq %rax, raycaster_vert_shader(%rip)  # store shader name
+
+    # make raycaster fragment shader
+    leaq raycaster_frag_shader(%rip), %rcx
+    add $8, %rcx                            # since first 8 bytes are the shader name
+    movq $GL_FRAGMENT_SHADER, %rdx
+    call MakeShader
+    movq %rax, raycaster_frag_shader(%rip)  # store shader name
+
+    # make shader program
+    PARAMS2 raycaster_vert_shader(%rip), raycaster_frag_shader(%rip)
+    call MakeShaderProgram
+    movq %rax, render_shader_program(%rip)  # store program name
+
+    # clean up shader objects
+    PARAMS1 raycaster_vert_shader(%rip)
+    call *glDeleteShader(%rip)
+    PARAMS1 raycaster_frag_shader(%rip)
+    call *glDeleteShader(%rip)
+
+    # make display shaders & program
+
     # make pass through vertex shader
     leaq pass_vert_shader(%rip), %rcx
     add $8, %rcx                            # since first 8 bytes are the shader name
@@ -65,7 +104,7 @@ SetupRenderer:
     # make shader program
     PARAMS2 pass_vert_shader(%rip), display_frag_shader(%rip)
     call MakeShaderProgram
-    movq %rax, render_shader_program(%rip)  # store program name
+    movq %rax, display_shader_program(%rip) # store program name
 
     # clean up shader objects
     PARAMS1 pass_vert_shader(%rip)
@@ -73,58 +112,53 @@ SetupRenderer:
     PARAMS1 display_frag_shader(%rip)
     call *glDeleteShader(%rip)
 
-    PARAMS1 render_shader_program(%rip)
-    call *glUseProgram(%rip)
+    # bind scene uniform to texture unit 0
+    PARAMS1 display_shader_program(%rip)
+    leaq scene_uniform(%rip), %rdx
+    call *glGetUniformLocation(%rip)
+
+    PARAMS3 display_shader_program(%rip), %rax, $0
+    call *glProgramUniform1i(%rip)
+    CHECK_OPENGL_ERROR
 
     #----------------------------------------------------------------------------------------------------------
     # Vertex Array Object
     #----------------------------------------------------------------------------------------------------------
-break:
+
+    # make full screen vao & vbo
+
     # generate render vao name
     PARAMS1 $1
-    leaq render_vao(%rip), %rdx
+    leaq full_vao(%rip), %rdx
     call *glGenVertexArrays(%rip)
 
     # bind render vao
-    PARAMS1 render_vao(%rip)
+    PARAMS1 full_vao(%rip)
     call *glBindVertexArray(%rip)
 
-    # generate full square vbo name
+    # make & bind full vbo
+    leaq vbo_data(%rip), %rcx
+    call MakeVertexArrayBuffer
+    movq %rax, full_vbo(%rip)
+
+    # make display vao & vbo
+
+    # modify vbo_data to contain the correct square to render the scene
+    call MakeDisplayVboData
+
+    # generate render vao name
     PARAMS1 $1
-    leaq full_vbo(%rip), %rdx
-    call *glGenBuffers(%rip)
+    leaq display_vao(%rip), %rdx
+    call *glGenVertexArrays(%rip)
 
-    # bind to array buffer target
-    PARAMS2 $GL_ARRAY_BUFFER, full_vbo(%rip)
-    call *glBindBuffer(%rip)
+    # bind render vao
+    PARAMS1 display_vao(%rip)
+    call *glBindVertexArray(%rip)
 
-    # fill full square vbo
-    PARAMS2 $GL_ARRAY_BUFFER, $64
-    leaq vbo_data(%rip), %r8
-    movq $0, %r9
-    call *glBufferStorage(%rip)
-
-    # tell render vao how to read the vbo
-
-    # position
-    # index, element count, type, normalized, stride, offset
-    PARAMS6 $0, $2, $GL_FLOAT, $GL_FALSE, $16, $0
-    SHADOW_SPACE
-    call *glVertexAttribPointer(%rip)
-    add $48, %rsp                           # cleanup stack after passing parameters
-
-    # texture coords
-    # index, element count, type, normalized, stride, offset
-    PARAMS6 $1, $2, $GL_FLOAT, $GL_FALSE, $16, $8
-    SHADOW_SPACE
-    call *glVertexAttribPointer(%rip)
-    add $48, %rsp                           # cleanup stack after passing parameters
-
-    # enable attributes
-    PARAMS1 $0
-    call *glEnableVertexAttribArray(%rip)
-    PARAMS1 $1
-    call *glEnableVertexAttribArray(%rip)
+    # make & bind display vbo
+    leaq vbo_data(%rip), %rcx
+    call MakeVertexArrayBuffer
+    movq %rax, display_vbo(%rip)
 
     #----------------------------------------------------------------------------------------------------------
     # Framebuffer
@@ -139,11 +173,25 @@ break:
 
     # make texture for frame buffer to draw too
     PARAMS1 $1
-    leaq render_tex_2d(%rip), %rdx
+    leaq scene_tex(%rip), %rdx
     call glGenTextures
 
-    PARAMS2 $GL_TEXTURE_2D, render_tex_2d(%rip)
+    PARAMS1 $GL_TEXTURE0
+    call *glActiveTexture(%rip)
+
+    PARAMS2 $GL_TEXTURE_2D, scene_tex(%rip)
     call glBindTexture
+
+    # set texture parameters
+    PARAMS3 $GL_TEXTURE_2D, $GL_TEXTURE_MIN_FILTER, $GL_NEAREST
+    call glTexParameteri
+    PARAMS3 $GL_TEXTURE_2D, $GL_TEXTURE_MAG_FILTER, $GL_NEAREST
+    call glTexParameteri
+
+    PARAMS3 $GL_TEXTURE_2D, $GL_TEXTURE_WRAP_S, $GL_CLAMP_TO_EDGE
+    call glTexParameteri
+    PARAMS3 $GL_TEXTURE_2D, $GL_TEXTURE_WRAP_T, $GL_CLAMP_TO_EDGE
+    call glTexParameteri
 
     sub $8, %rsp                            # allign stack
     # target, level, internal_format, width, height, border, external_format, type, data
@@ -153,16 +201,14 @@ break:
     add $80, %rsp                           # restore stack pointer
 
     # link texture to framebuffer
-
     sub $8, %rsp                            # allign stack
     # target, attachment, texture target, texture, level
-    PARAMS5 $GL_FRAMEBUFFER, $GL_COLOR_ATTACHMENT0, $GL_TEXTURE_2D, render_tex_2d(%rip), $0
+    PARAMS5 $GL_FRAMEBUFFER, $GL_COLOR_ATTACHMENT0, $GL_TEXTURE_2D, scene_tex(%rip), $0
     SHADOW_SPACE
     call *glFramebufferTexture2D(%rip)
     add $48, %rsp                           # restore stack pointer
 
     # check if frame buffer is complete
-
     PARAMS1 $GL_FRAMEBUFFER
     call *glCheckFramebufferStatus(%rip)
     movq $0, %rcx                     
@@ -171,7 +217,6 @@ break:
     CHECK_RETURN_FAILURE $201
 
     # unbind framebuffer
-
     PARAMS2 $GL_FRAMEBUFFER, $0
     call *glBindFramebuffer(%rip)
 
@@ -400,4 +445,119 @@ MakeShaderProgram:
     movq -8(%rbp), %r12
     movq -16(%rbp), %r13
     movq -24(%rbp), %r14
+    EPILOGUE
+
+# make a vbo with the provided 4 vertices in the format of x, y, texX, texY.
+# and bind to the currently bound vao
+# PARAMS:
+# %rcx =    pointer to 4 vertices
+# RETURNS:
+# %rax =    name of the resulting vbo
+MakeVertexArrayBuffer:
+    PROLOGUE
+
+    push %r12
+    sub $8, %rsp
+    movq %rcx, %r12                         # save pointer to data in callee saved register
+
+    SHADOW_SPACE
+
+    # generate vbo name
+    PARAMS1 $1
+    leaq -16(%rbp), %rdx
+    call *glGenBuffers(%rip)
+
+    # bind to array buffer target
+    PARAMS2 $GL_ARRAY_BUFFER, -16(%rbp)
+    call *glBindBuffer(%rip)
+
+    # fill with data
+    PARAMS4 $GL_ARRAY_BUFFER, $64, %r12, $0
+    call *glBufferStorage(%rip)
+
+    # tell currently bound vao how to read the buffer
+
+    # position
+    # index, element count, type, normalized, stride, offset
+    PARAMS6 $0, $2, $GL_FLOAT, $GL_FALSE, $16, $0
+    SHADOW_SPACE
+    call *glVertexAttribPointer(%rip)
+    add $48, %rsp                           # cleanup stack after passing parameters
+
+    # texture coords
+    # index, element count, type, normalized, stride, offset
+    PARAMS6 $1, $2, $GL_FLOAT, $GL_FALSE, $16, $8
+    SHADOW_SPACE
+    call *glVertexAttribPointer(%rip)
+    add $48, %rsp                           # cleanup stack after passing parameters
+
+    # enable attributes
+    PARAMS1 $0
+    call *glEnableVertexAttribArray(%rip)
+    PARAMS1 $1
+    call *glEnableVertexAttribArray(%rip)
+
+    movq -16(%rbp), %rax                    # return result
+
+    movq -8(%rbp), %r12
+
+    EPILOGUE
+
+# calculate display vbo data and puts them in the vbo_data label
+# ratio = min(screen_width / view_width, screen_height / view_height)
+# normalized_x = (ratio * view_width) / screen_width
+# normalized_y = (ratio * view_height) / screen_height
+MakeDisplayVboData:
+    PROLOGUE
+
+    # get screen and view dimensions
+    movq screen_width(%rip), %r8
+    movq screen_height(%rip), %r9
+    movq $VIEW_WIDTH, %r10
+    movq $VIEW_HEIGHT, %r11
+
+    # convert to floats
+    cvtsi2ss %r8, %xmm0
+    cvtsi2ss %r9, %xmm1
+    cvtsi2ss %r10, %xmm2
+    cvtsi2ss %r11, %xmm3
+
+    # calculate ratio and store in xmm4, xmm5
+    movss %xmm0, %xmm4
+    movss %xmm1, %xmm5
+
+    divss %xmm2, %xmm4
+    divss %xmm3, %xmm5
+    
+    minss %xmm5, %xmm4                      # store minimum (ratio) in xmm4
+
+    # calculate normalized screen coordinates
+    mulss %xmm4, %xmm2
+    mulss %xmm4, %xmm3
+
+    divss %xmm0, %xmm2
+    divss %xmm1, %xmm3
+
+    # put values in vbo data
+    leaq vbo_data(%rip), %rcx
+
+    # positive x
+    movss %xmm2, 32(%rcx)
+    movss %xmm2, 48(%rcx)
+    # positive y
+    movss %xmm3, 20(%rcx)
+    movss %xmm3, 52(%rcx)
+
+    # invert
+    movss minus_one(%rip), %xmm0
+    mulss %xmm0, %xmm2
+    mulss %xmm0, %xmm3
+
+    # negative x
+    movss %xmm2, (%rcx)
+    movss %xmm2, 16(%rcx)
+    # negative y
+    movss %xmm3, 4(%rcx)
+    movss %xmm3, 36(%rcx)
+
     EPILOGUE
