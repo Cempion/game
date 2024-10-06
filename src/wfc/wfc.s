@@ -115,7 +115,8 @@ CreateWfc:
     movl 4(%rsp), %eax              # get tilecount
     inc %rax                        # tilecount + 1
     shl $2, %rax                    # same as (tilecount + 1) * 4 bytes
-    mulb (%r8)                      # multiply by max_entropy (first byte in ruleset is max_entropy)
+    movb (%r8), %dl                 # get module count (first byte in ruleset is max_entropy)
+    mul %rdx                        # multiply by max_entropy
     add $4, %rax                    # add 4 bytes for structure size
 
     movq %rax, 40(%rsp)             # save size of structure on stack

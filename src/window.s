@@ -1,6 +1,10 @@
 
 .data
 
+wglCreateContextAttribsARB_Name: .asciz "wglCreateContextAttribsARB"
+
+wglCreateContextAttribsARB: .quad 0
+
 window_class_name: .asciz "myclass"
 window_class:     
     .long 80                       # size in bytes
@@ -36,6 +40,13 @@ pixel_format:
     .byte 0                         # bReserved: reserved
     .long 0, 0, 0                   # dwLayerMask, dwVisibleMask, dwDamageMask
 
+context_attribList:
+    .long 0x2091        # WGL_CONTEXT_MAJOR_VERSION_ARB
+    .long 4             # Major version 3
+    .long 0x2092        # WGL_CONTEXT_MINOR_VERSION_ARB
+    .long 1             # Minor version 0
+    .long 0             # Termination (int 0)
+
 .bss
 
 window_handle: .quad 0
@@ -48,43 +59,43 @@ has_window: .byte 0
 
 .globl main
 
-create_window:
+CreateWindow:
     PROLOGUE
-    SHADOW_SPACE                            # allocate for all subroutines in this method
+    SHADOW_SPACE                                        # allocate for all subroutines in this method
 
     PARAMS1 $0
-    call GetModuleHandleA                   # get handle for this program
-    CHECK_RETURN_FAILURE $2
+    call GetModuleHandleA                               # get handle for this program
+    CHECK_RETURN_FAILURE $100
 
     #----------------------------------------------------------------------------------------------------------
     # register class
     #----------------------------------------------------------------------------------------------------------
 
-    lea window_class(%rip), %rcx            # get pointer to class structure
-    lea window_class_name(%rip), %rdx       # get pointer to class name
-    lea event_handling(%rip), %r8           # get pointer to event handler
+    lea window_class(%rip), %rcx                        # get pointer to class structure
+    lea window_class_name(%rip), %rdx                   # get pointer to class name
+    lea HandleEvent(%rip), %r8                          # get pointer to event handler
 
-    movq %r8, 8(%rcx)                       # wndproc (event handling)
-    movq %rax, 24(%rcx)                     # hInstance
-    movq %rdx, 64(%rcx)                     # lpszClassName
+    movq %r8, 8(%rcx)                                   # wndproc (event handling)
+    movq %rax, 24(%rcx)                                 # hInstance
+    movq %rdx, 64(%rcx)                                 # lpszClassName
 
-    call RegisterClassExA                   # register window class
-    CHECK_RETURN_FAILURE $3
+    call RegisterClassExA                               # register window class
+    CHECK_RETURN_FAILURE $101
 
     #----------------------------------------------------------------------------------------------------------
     # create window
     #----------------------------------------------------------------------------------------------------------
 
-    leaq window_title(%rip), %r8            # load pointer
+    leaq window_title(%rip), %r8                        # load pointer
 
     # pass parameters
-    PARAMS12 $0, %rax, %r8, $0x00CF0000, $100, $100, $1920, $1080, $0, $0, $0, $0
+    PARAMS12 $0, %rax, %r8, $0x00CF0000, $100, $100, $1000, $1000, $0, $0, $0, $0
     SHADOW_SPACE
-    call CreateWindowExA                    # create window
+    call CreateWindowExA                                # create window
     CLEAN_SHADOW
-    CHECK_RETURN_FAILURE $4
+    CHECK_RETURN_FAILURE $102
 
-    movq %rax, window_handle(%rip)          # store window handle   
+    movq %rax, window_handle(%rip)                      # store window handle   
 
     #----------------------------------------------------------------------------------------------------------
     # get device context
@@ -92,85 +103,112 @@ create_window:
 
     PARAMS1 window_handle(%rip)
     call GetDC
-    CHECK_RETURN_FAILURE $5
+    CHECK_RETURN_FAILURE $103
 
-    movq %rax, device_context(%rip)         # store device context
+    movq %rax, device_context(%rip)                     # store device context
 
     #----------------------------------------------------------------------------------------------------------
     # set pixel format
     #----------------------------------------------------------------------------------------------------------
 
-    leaq pixel_format(%rip), %rdx           # load pixel format pointer
+    leaq pixel_format(%rip), %rdx                       # load pixel format pointer
 
     PARAMS2 %rax, %rdx
-    call ChoosePixelFormat                  # choose valid pixel format
-    CHECK_RETURN_FAILURE $6
+    call ChoosePixelFormat                              # choose valid pixel format
+    CHECK_RETURN_FAILURE $104
 
-    leaq pixel_format(%rip), %r8            # load pixel format pointer
+    leaq pixel_format(%rip), %r8                        # load pixel format pointer
 
     PARAMS3 device_context(%rip), %rax, %r8
-    call SetPixelFormat                     # set pixel format
-    CHECK_RETURN_FAILURE $7
+    call SetPixelFormat                                 # set pixel format
+    CHECK_RETURN_FAILURE $105
 
     #----------------------------------------------------------------------------------------------------------
     # create opengl context
     #----------------------------------------------------------------------------------------------------------
 
-    PARAMS1 device_context(%rip)
-    call wglCreateContext                   # create context
-    CHECK_RETURN_FAILURE $8
+    # make temporary context because the wglCreateContextAttribsARB subroutine needed to make a context in
+    # a specific version can only be gotten with another opengl context.
 
-    movq %rax, opengl_context(%rip)         # store opengl context
+    PARAMS1 device_context(%rip)
+    call wglCreateContext                               # create temp context just to get wglCreateContextAttribsARB
+    CHECK_RETURN_FAILURE $106
+
+    movq %rax, opengl_context(%rip)                     # store temporary opengl context
 
     PARAMS2 device_context(%rip), %rax
-    call wglMakeCurrent                     # make current
-    CHECK_RETURN_FAILURE $9
+    call wglMakeCurrent                                 # make temp context current
+    CHECK_RETURN_FAILURE $107
 
-    #----------------------------------------------------------------------------------------------------------
-    # show window
-    #----------------------------------------------------------------------------------------------------------
+    # get wglCreateContextAttribsARB
 
-    PARAMS2 window_handle(%rip), $1
-    call ShowWindow
+    leaq wglCreateContextAttribsARB_Name(%rip), %rcx
+    call wglGetProcAddress                              # get pointer to wglCreateContextAttribsARB
+    CHECK_RETURN_FAILURE $108
 
-    movb $1, has_window(%rip)               # set to true             
+    movq %rax, wglCreateContextAttribsARB(%rip)         # store pointer to wglCreateContextAttribsARB
+
+    # delete temporary context
+    PARAMS1 opengl_context(%rip)
+    call wglDeleteContext
+    CHECK_RETURN_FAILURE $109
+
+    # make permanent context
+
+    PARAMS2 device_context(%rip), $0
+    leaq context_attribList(%rip), %r8
+    call *wglCreateContextAttribsARB(%rip)              # call wglCreateContextAttribsARB to make permanent context with the correct version
+    CHECK_RETURN_FAILURE $110
+
+    movq %rax, opengl_context(%rip)                     # store permanent opengl context
+
+    PARAMS2 device_context(%rip), %rax
+    call wglMakeCurrent                                 # make permanent context current
+    CHECK_RETURN_FAILURE $111
 
     EPILOGUE
 
-poll_events:
-    PROLOGUE
-    SHADOW_SPACE                        # allocate for all calls in this subroutine
+#----------------------------------------------------------------------------------------------------------
+# Events
+#----------------------------------------------------------------------------------------------------------
 
-    sub $8, %rsp                        # align stack
+PollEvents:
+    PROLOGUE
+
+    push %r12
+    push %r13
+    movq window_handle(%rip), %r12          # save window handle in callee saved register
+    leaq msg_class(%rip), %r13              # save msg class pointer in callee saved register
+
+    sub $48, %rsp                           # allocate shadowspace and fifth parameter and allign stack
 
     poll_events_loop:
 
-        # get event
-
-        leaq msg_class(%rip), %rcx          # get pointer to msg class
-
         # pass params
-        PARAMS5 %rcx, window_handle(%rip), $0, $0, $1
-        SHADOW_SPACE
+        PARAMS4 %r13, %r12, $0, $0
+        movq $1, -32(%rbp)                  # fifth parameter
         call PeekMessageA                   # get msg without blocking
-        CLEAN_SHADOW
 
         cmp $0, %rax                        # if 0 (no msg's in queue)
         jz poll_events_end                  # end loop
 
         # dispatch msg event
-        leaq msg_class(%rip), %rcx          # get pointer to msg class
+        PARAMS1 %r13                        # get pointer to msg class
         call TranslateMessage               # translate key msg's
 
-        leaq msg_class(%rip), %rcx          # get pointer to msg class
+        PARAMS1 %r13                        # get pointer to msg class
         call DispatchMessageA               # dispatch msg
 
         jmp poll_events_loop
 
     poll_events_end:
+
+    # restore callee saved registers
+    movq -8(%rbp), %r12
+    movq -16(%rbp), %r13
     EPILOGUE
 
-event_handling:
+HandleEvent:
     PROLOGUE
     SHADOW_SPACE
 

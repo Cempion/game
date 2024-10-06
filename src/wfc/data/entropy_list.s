@@ -9,11 +9,19 @@
     G_TILE_CNT %eax, \wfcPointer                            # get tile count
     incq %rax                                               # account for 4 bytes for size
     mov \entropy, %rdx
-    decq %rdx                                               # entropy 1 should be index 0                                    
+
+    cmp $0, %rdx                                            # if entropy is 0
+    je skip_\@                                              # skip decrementing
+
+    decq %rdx                                               # entropy 1 should be index 0
+
+    skip_\@:                                    
     mulq %rdx                                               # get index to correct entropy
 
     movq $4, %rdx
     mulq %rdx                                               # since each index is 4 bytes
+
+    add $4, %rax                                            # account for the first size value
 .endm
 
 # add the given tile to the entropy list at the given entropy, or does nothing if its already 
@@ -36,14 +44,13 @@ AddToEntList:
     G_ENT_OFFSET %r8, %rcx                                  # get offset to correct entropy sublist
     GP_ENT_LIST %rdx, %rcx                                  # get pointer to data
     add %rax, %rdx                                          # pointer to correct entropy list
-    add $4, %rdx                                            # add offset of 4 to pointer to account for size value
 
     movl (%rdx), %eax                                       # get the index to last tile
     movl %r9d, 4(%rdx, %rax, 4)                             # put tile in list, offset of 4 to account for size bytes
 
     incl (%rdx)                                             # increase size
 
-    movq (%rdx), %rdx                                       # the index the tile got added too
+    movl (%rdx), %edx                                       # the index the tile got added too
     S_ENT_INDEX %edx, %r9, %rdi                             # save index in entropy indexes
                             
     1:
@@ -63,7 +70,6 @@ SubFromEntList:
     G_ENT_OFFSET %r8, %rcx                                  # get offset to correct entropy sublist
     GP_ENT_LIST %rdx, %rcx                                  # get pointer to data
     add %rax, %rdx                                          # pointer to correct entropy list
-    add $4, %rdx                                            # add offset of 4 to pointer to account for size value
 
     GP_ENT_INDEXES %r8, %rcx                                # get pointer to entropy indexes
     G_ENT_INDEX %r10d, %r9, %r8                             # get index of the tile to remove

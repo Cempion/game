@@ -1,7 +1,7 @@
 
 .include "macro.s"
-.include "opengl.s"
 .include "window.s"
+.include "rendering/renderer.s"
 
 .extern CreateWfc
 
@@ -15,19 +15,19 @@ clear_color:
     .float 0.8 # blue
     .float 0.0 # alpha
 
-.equ width, 6
-.equ height, 6
-.equ tile_count, 36
+.equ WFC_WIDTH, 20
+.equ WFC_HEIGHT, 20
+.equ WFC_TILE_COUNT, 400
 
 wfc_ruleset: .byte 3
-             .quad 0b011, 0b011, 0b011, 0b000 # everything possible on all sides
+             .quad 0b011, 0b011, 0b011, 0b011 # everything possible on all sides
              .quad 0b111, 0b111, 0b111, 0b111 # everything possible on all sides
              .quad 0b110, 0b110, 0b110, 0b110 # everything possible on all sides
 
 
-wfc_modules: .ascii "*KLM"
+wfc_chars: .ascii "*KLM"
 
-wfc_map: .skip tile_count
+wfc_map: .skip WFC_TILE_COUNT
 
 .bss
 
@@ -41,16 +41,21 @@ main:
     sub $8, %rsp                            # allign stack
     push %r12                               # save register so it can be used
 
+    SHADOW_SPACE
+
+    # hello world print
+
     mov $0, %rax
     lea hello_world(%rip), %rcx
-    SHADOW_SPACE
     call printf
 
-    call load_opengl_methods
+    # setup
 
-    #call create_window
+    call CreateWindow
 
-    PARAMS2 $width, $height
+    call SetupRenderer
+
+    PARAMS2 $WFC_WIDTH, $WFC_HEIGHT
     lea wfc_ruleset(%rip), %r8
     lea wfcOnChange(%rip), %r9
     call CreateWfc
@@ -60,33 +65,28 @@ main:
     PARAMS1 %r12
     call CollapseAllTiles
 
-    call printWfc
+    # call printWfc
+
+    # show window
+
+    PARAMS2 window_handle(%rip), $1
+    call ShowWindow
+
+    movb $1, has_window(%rip)               # set to true
 
     #----------------------------------------------------------------------------------------------------------
     # Loop
     #----------------------------------------------------------------------------------------------------------
 
-    SHADOW_SPACE
     sys_loop:
         cmpb $0, has_window(%rip)            # if true do loop
         jz end
 
-        leaq clear_color(%rip), %rcx
-        movss (%rcx), %xmm0
-        movss 4(%rcx), %xmm1
-        movss 8(%rcx), %xmm2
-        movss 12(%rcx), %xmm3
-        call glClearColor
-        
-        PARAMS1 $0x00004000
-        call glClear
+        call RenderFrame
 
-        PARAMS1 device_context(%rip)
-        call SwapBuffers
+        call PollEvents
 
-        call poll_events
-
-    jmp sys_loop
+        jmp sys_loop
 
     #----------------------------------------------------------------------------------------------------------
     # end
@@ -98,9 +98,10 @@ main:
     
     # cleanup
     PARAMS1 opengl_context(%rip)
+    SHADOW_SPACE
     call wglDeleteContext
     CLEAN_SHADOW
-    CHECK_RETURN_FAILURE $10
+    CHECK_RETURN_FAILURE $112
 
     PARAMS1 $0
     call exit
@@ -108,7 +109,7 @@ main:
 
 wfcOnChange:
     PROLOGUE
-    lea wfc_modules(%rip), %r8
+    lea wfc_chars(%rip), %r8
     lea wfc_map(%rip), %r9
 
     popcnt %rdx, %rsi
@@ -144,10 +145,10 @@ printWfc:
 
     # calculate string size
 
-    movq $tile_count, %rax              # put tile count into rax to calculate string size
+    movq $WFC_TILE_COUNT, %rax              # put tile count into rax to calculate string size
     movq $3, %r9
     mul %r9                             # each tile is 3 chars long, SPACE CHAR SPACE
-    add $height, %rax                   # add height to account for new line
+    add $WFC_HEIGHT, %rax                   # add height to account for new line
     add $1, %rax                        # add space for null terminator
     movq %rax, %r8                      # move string size to free rax
 
@@ -164,7 +165,7 @@ printWfc:
 
     movq $0, %r9                        # use as string index
 
-    movq $height, %rsi                  # use as y counter
+    movq $WFC_HEIGHT, %rsi                  # use as y counter
     dec %rsi         
     1: # outer loop (y position)
         cmp $0, %rsi                    # if y is than 0
@@ -172,12 +173,12 @@ printWfc:
 
         movq $0, %rdi                   # use as x counter                  
         2: # inner loop (x position)
-            cmp $width, %rdi                # if x is greater or equal to width
+            cmp $WFC_WIDTH, %rdi                # if x is greater or equal to width
             jge 3f                          # exit loop
 
             # calculate tile index
             movq %rsi, %rax                 # put y in rax
-            movq $width, %rdx
+            movq $WFC_WIDTH, %rdx
             mul %rdx                        # y * width
             add %rdi, %rax                  # x + y * width
 
