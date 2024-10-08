@@ -1,27 +1,42 @@
 
+# General Booleans
 .equ GL_FALSE, 0
 .equ GL_TRUE, 1
 
+# Rendering Bits
 .equ GL_COLOR_BUFFER_BIT, 0x00004000
 
+# Primitives
 .equ GL_TRIANGLE_STRIP, 0x0005
 
+# Shader Types and Status
 .equ GL_FRAGMENT_SHADER, 0x8B30
 .equ GL_VERTEX_SHADER, 0x8B31
 .equ GL_COMPILE_STATUS, 0x8B81
-
 .equ GL_LINK_STATUS, 0x8B82
-
 .equ GL_INFO_LOG_LENGTH, 0x8B84
 
+# Buffers
 .equ GL_ARRAY_BUFFER, 0x8892
+.equ GL_UNIFORM_BUFFER, 0x8A11
+
+# Buffer Usage
+.equ GL_DYNAMIC_DRAW, 0x88E8
+
+# Data Types
 .equ GL_FLOAT, 0x1406
-
-.equ GL_TEXTURE_2D, 0x0DE1
-.equ GL_RGB, 0x1907
 .equ GL_UNSIGNED_BYTE, 0x1401
-.equ GL_TEXTURE0, 0x84c0
 
+# Texture Types
+.equ GL_TEXTURE_2D, 0x0DE1
+
+# Texture Formats
+.equ GL_RGB, 0x1907
+
+# Texture Units
+.equ GL_TEXTURE0, 0x84C0
+
+# Texture Parameters
 .equ GL_TEXTURE_MIN_FILTER, 0x2801
 .equ GL_TEXTURE_MAG_FILTER, 0x2800
 .equ GL_TEXTURE_WRAP_S, 0x2802
@@ -32,6 +47,7 @@
 .equ GL_CLAMP_TO_BORDER, 0x812D
 .equ GL_CLAMP_TO_EDGE, 0x812F
 
+# Framebuffers
 .equ GL_FRAMEBUFFER, 0x8D40
 .equ GL_COLOR_ATTACHMENT0, 0x8CE0
 .equ GL_FRAMEBUFFER_COMPLETE, 0x8CD5
@@ -57,7 +73,10 @@ glProgramUniform1i:         .asciz "        glProgramUniform1i"
 
 glGenBuffers:               .asciz "        glGenBuffers"
 glBindBuffer:               .asciz "        glBindBuffer"
+glBufferData:               .asciz "        glBufferData"
 glBufferStorage:            .asciz "        glBufferStorage"
+glBufferSubData:            .asciz "        glBufferSubData"
+glBindBufferBase:           .asciz "        glBindBufferBase"
 
 glGenVertexArrays:          .asciz "        glGenVertexArrays"
 glBindVertexArray:          .asciz "        glBindVertexArray"
@@ -115,7 +134,10 @@ LoadOpenGlMethods:
 
     LOAD_METHOD glGenBuffers
     LOAD_METHOD glBindBuffer
+    LOAD_METHOD glBufferData
     LOAD_METHOD glBufferStorage
+    LOAD_METHOD glBufferSubData
+    LOAD_METHOD glBindBufferBase
 
     LOAD_METHOD glGenVertexArrays
     LOAD_METHOD glBindVertexArray

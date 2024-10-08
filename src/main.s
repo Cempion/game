@@ -1,7 +1,8 @@
-
+.include "float.s"
 .include "macro.s"
 .include "window.s"
 .include "rendering/renderer.s"
+.include "game.s"
 
 .extern CreateWfc
 
@@ -49,6 +50,8 @@ main:
 
     call SetupRenderer
 
+    call SetupGame
+
     PARAMS2 $WFC_WIDTH, $WFC_HEIGHT
     lea wfc_ruleset(%rip), %r8
     lea wfcOnChange(%rip), %r9
@@ -80,6 +83,8 @@ main:
 
         call PollEvents
 
+        call DoPlayerControls
+
         jmp sys_loop
 
     #----------------------------------------------------------------------------------------------------------
@@ -92,9 +97,7 @@ main:
     
     # cleanup
     PARAMS1 opengl_context(%rip)
-    SHADOW_SPACE
     call wglDeleteContext
-    CLEAN_SHADOW
     CHECK_RETURN_FAILURE $112
 
     PARAMS1 $0
@@ -103,8 +106,8 @@ main:
 
 wfcOnChange:
     PROLOGUE
-    lea wfc_chars(%rip), %r8
-    lea wfc_map(%rip), %r9
+    leaq wfc_chars(%rip), %r8
+    leaq wfc_map(%rip), %r9
 
     popcnt %rdx, %rsi
     cmp $0, %rsi                        # if entropy is 0

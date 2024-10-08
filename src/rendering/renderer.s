@@ -5,9 +5,9 @@
 
 clear_color:
     .float 0 # red
-    .float 1 # green
+    .float 0 # green
     .float 0 # blue
-    .float 0 # alpha
+    .float 1 # alpha
 
 .text
 
@@ -15,6 +15,25 @@ clear_color:
 RenderFrame:
     PROLOGUE
     SHADOW_SPACE
+
+    #----------------------------------------------------------------------------------------------------------
+    # Pass data
+    #----------------------------------------------------------------------------------------------------------
+
+    # update camera ubo
+
+    # make sure camera ubo is bound
+    PARAMS2 $GL_UNIFORM_BUFFER, camera_ubo(%rip)
+    call *glBindBuffer(%rip)
+
+    # target, offset, size, pointer to data to write to ubo
+    PARAMS3 $GL_UNIFORM_BUFFER, $0, $24 
+    leaq player_cam(%rip), %r9
+    call *glBufferSubData(%rip)
+
+    #----------------------------------------------------------------------------------------------------------
+    # Render Scene
+    #----------------------------------------------------------------------------------------------------------
 
     # clear window buffer
     leaq clear_color(%rip), %r10

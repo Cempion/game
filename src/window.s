@@ -1,3 +1,5 @@
+.include "listeners/keyListener.s"
+.include "listeners/mouseListener.s"
 
 .data
 
@@ -186,6 +188,29 @@ CreateWindow:
     call wglMakeCurrent                                 # make permanent context current
     CHECK_RETURN_FAILURE $111
 
+    call HideCursor
+
+    EPILOGUE
+
+
+# hides the cursor and binds it to the window
+HideCursor:
+    PROLOGUE
+    SHADOW_SPACE
+
+    PARAMS1 $0
+    call ShowCursor                         # hide cursor
+
+    EPILOGUE
+
+# shows the cursor and unbinds it from the window
+DisplayCursor:
+    PROLOGUE
+    SHADOW_SPACE
+
+    PARAMS1 $1
+    call ShowCursor                         # show cursor
+
     EPILOGUE
 
 #----------------------------------------------------------------------------------------------------------
@@ -228,6 +253,7 @@ PollEvents:
     movq -16(%rbp), %r13
     EPILOGUE
 
+# event handler for the window
 HandleEvent:
     PROLOGUE
     SHADOW_SPACE
@@ -235,11 +261,42 @@ HandleEvent:
     cmp $2, %rdx                            # wm_destroy
     je wm_destroy
 
+    # keyboard
+
     cmp $0x0100, %rdx                       # wm_keydown
     je wm_keydown
 
+    cmp $0x0101, %rdx                       # wm_keyup
+    je wm_keyup
+
+    cmp $0x0104, %rdx                       # wm_syskeydown
+    je wm_syskeydown
+
+    cmp $0x0105, %rdx                       # wm_syskeyup
+    je wm_syskeyup
+
+    # mouse
+
     cmp $0x0201, %rdx                       # wm_lbuttondown
     je wm_lbuttondown
+
+    cmp $0x0202, %rdx                       # wm_lbuttonup
+    je wm_lbuttonup
+
+    cmp $0x0204, %rdx                       # wm_rbuttondown
+    je wm_rbuttondown
+
+    cmp $0x0205, %rdx                       # wm_rbuttonup
+    je wm_rbuttonup
+
+    cmp $0x0207, %rdx                       # wm_mbuttondown
+    je wm_mbuttondown
+
+    cmp $0x0208, %rdx                       # wm_mbuttonup
+    je wm_mbuttonup
+
+    cmp $0x0200, %rdx                       # wm_mousemove
+    je wm_mousemove
 
     default:
         call DefWindowProcA
@@ -253,20 +310,74 @@ wm_destroy:
     jmp default
 
 wm_keydown:
-    cmp $0x100, %edx                        # if esc key was not pressed
-    jne event_end                           # do nothing
+    PARAMS1 %r8
+    call HandleKeyDownMsg
+    movq $0, %rax                           # return 0 to show that the msg got handled
+    jmp event_end
 
-    PARAMS1 window_handle(%rip)
-    call DestroyWindow                      # destroy window
+wm_keyup:
+    PARAMS1 %r8
+    call HandleKeyUpMsg
+    movq $0, %rax                           # return 0 to show that the msg got handled
+    jmp event_end
 
+wm_syskeydown:
+    PARAMS1 %r8
+    call HandleKeyDownMsg
+    movq $0, %rax                           # return 0 to show that the msg got handled
+    jmp event_end
+
+wm_syskeyup:
+    PARAMS1 %r8
+    call HandleKeyUpMsg
+    movq $0, %rax                           # return 0 to show that the msg got handled
     jmp event_end
 
 wm_lbuttondown:
-    mov $0, %rax
-
-    lea lbuttondown(%rip), %rcx
-    call printf
-
+    PARAMS1 $LEFT_BUTTON
+    call HandleButtonDownMsg
+    movq $0, %rax                           # return 0 to show that the msg got handled
     jmp event_end
 
-lbuttondown: .asciz "Left button pressed!"
+wm_lbuttonup:
+    PARAMS1 $LEFT_BUTTON
+    call HandleButtonUpMsg
+    movq $0, %rax                           # return 0 to show that the msg got handled
+    jmp event_end
+
+wm_rbuttondown:
+    PARAMS1 $RIGHT_BUTTON
+    call HandleButtonDownMsg
+    movq $0, %rax                           # return 0 to show that the msg got handled
+    jmp event_end
+
+wm_rbuttonup:
+    PARAMS1 $RIGHT_BUTTON
+    call HandleButtonUpMsg
+    movq $0, %rax                           # return 0 to show that the msg got handled
+    jmp event_end
+
+wm_mbuttondown:
+    PARAMS1 $MIDDLE_BUTTON
+    call HandleButtonDownMsg
+    movq $0, %rax                           # return 0 to show that the msg got handled
+    jmp event_end
+
+wm_mbuttonup:
+    PARAMS1 $MIDDLE_BUTTON
+    call HandleButtonUpMsg
+    movq $0, %rax                           # return 0 to show that the msg got handled
+    jmp event_end
+
+wm_mousemove:
+    # get x and y coordinates of the mouse (first 2 bytes = x, second 2 bytes = y)
+    movq %r9, %rcx
+    andq $0xFFFF, %rcx                      # get x pos
+    shr $16, %r9
+    movq %r9, %rdx
+    andq $0xFFFF, %rdx                      # get y pos
+
+    call HandleMouseMoveMsg
+    movq $0, %rax                           # return 0 to show that the msg got handled
+    jmp event_end
+

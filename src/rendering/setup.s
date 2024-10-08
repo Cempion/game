@@ -1,6 +1,6 @@
 # how many pixels to render (rays to cast)
-.equ RENDER_WIDTH, 16
-.equ RENDER_HEIGHT, 9
+.equ RENDER_WIDTH, 128 #256
+.equ RENDER_HEIGHT, 144 #144
 
 # used to calculate the ratio between width and height for the view, decides which direction 
 # the rays are cast and the final size of the view on the screen
@@ -8,7 +8,6 @@
 .equ VIEW_HEIGHT, 9
 
 .data
-minus_one: .float -1
 
 render_shader_program: .quad 0 # the shader program responsible for rendering the game to the scene texture (casts rays & stuff)
 display_shader_program: .quad 0 # the shader program responsible for rendering the scene to the screen
@@ -26,6 +25,8 @@ vbo_data:
     .float  1.0, -1.0, 1, 0
     .float  1.0,  1.0, 1, 1
 
+camera_ubo: .quad 0 # the uniform buffer object that stores the needed camera data in 6 floats
+
 render_fbo: .quad 0 # the framebuffer object used to render the scene too.
 scene_tex: .quad 0 # the 2d texture used to render the scene in the render fbo.
 
@@ -36,12 +37,12 @@ raycaster_frag_shader:  .asciz "        shaders\\raycasting\\raycaster.frag"
 pass_vert_shader:       .asciz "        shaders\\pass.vert"
 display_frag_shader:    .asciz "        shaders\\display.frag"
 
+.text
+
 # uniform names
 scene_uniform: .asciz "scene"
 
-.text
-
-read_mode: .asciz "rb"
+read_mode: .asciz "rb" # mode to use when reading shader code, rd = read binary
 
 #----------------------------------------------------------------------------------------------------------
 # Setup
@@ -161,6 +162,27 @@ SetupRenderer:
     movq %rax, display_vbo(%rip)
 
     #----------------------------------------------------------------------------------------------------------
+    # Camera UBO
+    #----------------------------------------------------------------------------------------------------------
+
+    # generate camera ubo name
+    PARAMS1 $1
+    leaq camera_ubo(%rip), %rdx
+    call *glGenBuffers(%rip)
+
+    # bind buffer to ubo target (make it a ubo)
+    PARAMS2 $GL_UNIFORM_BUFFER, camera_ubo(%rip)
+    call *glBindBuffer(%rip)
+    
+    # target, size in bytes (6 * 4), data (null for now), usage
+    PARAMS4 $GL_UNIFORM_BUFFER, $24, $0, $GL_DYNAMIC_DRAW
+    call *glBufferData(%rip)
+
+    # bind camera ubo to base 0
+    PARAMS3 $GL_UNIFORM_BUFFER, $0, camera_ubo(%rip)
+    call *glBindBufferBase(%rip)
+
+    #----------------------------------------------------------------------------------------------------------
     # Framebuffer
     #----------------------------------------------------------------------------------------------------------
 
@@ -183,7 +205,7 @@ SetupRenderer:
     call glBindTexture
 
     # set texture parameters
-    PARAMS3 $GL_TEXTURE_2D, $GL_TEXTURE_MIN_FILTER, $GL_NEAREST
+    PARAMS3 $GL_TEXTURE_2D, $GL_TEXTURE_MIN_FILTER, $GL_LINEAR
     call glTexParameteri
     PARAMS3 $GL_TEXTURE_2D, $GL_TEXTURE_MAG_FILTER, $GL_NEAREST
     call glTexParameteri
@@ -549,7 +571,7 @@ MakeDisplayVboData:
     movss %xmm3, 52(%rcx)
 
     # invert
-    movss minus_one(%rip), %xmm0
+    movss f_min_1(%rip), %xmm0
     mulss %xmm0, %xmm2
     mulss %xmm0, %xmm3
 
