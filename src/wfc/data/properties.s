@@ -40,7 +40,7 @@
     
     # loop read index
     movq $0, %rdx                                           # clear so div can be used
-    divl (\dataPointer)                                     # module read index with size
+    divl (\dataPointer)                                     # piece read index with size
     movl %edx, 4(\dataPointer)                              # move result into read index
 .endm
 
@@ -52,6 +52,6 @@
     
     # loop write index
     movq $0, %rdx                                           # clear so div can be used
-    divl (\dataPointer)                                     # module write index with size
+    divl (\dataPointer)                                     # piece write index with size
     movl %edx, 8(\dataPointer)                              # move result into write index
 .endm

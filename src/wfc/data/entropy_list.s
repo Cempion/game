@@ -130,7 +130,7 @@ GetLowestEntListP:
 
     # get max entropy
     GP_RULESET %r9, %rcx
-    G_MAX_MODULES %r9b, %r9                                 # get max modules (max entropy)
+    G_MAX_PIECES %r9b, %r9                                 # get max pieces (max entropy)
 
     movq $0, %rax                                           # use rax as entropy index counter
     GP_ENT_LIST %rdx, %rcx                                  # get pointer to entropy list

@@ -1,44 +1,5 @@
 
-.data 
-
-player_cam:
-    .float 0, 0 # position
-    .float 0 # angle x
-    .float 0 # angle y
-    .float 0 # fov
-    .float 0 # aspect ratio (view width / view height)
-
-mouse_sensitivity: .float 500 # low numbers mean high sensitivity
-
 .text
-
-# setup game related things
-SetupGame:
-    PROLOGUE
-
-    leaq player_cam(%rip), %rcx
-
-    # set camera fov to half PI (90 degrees)
-    movss f_pi(%rip), %xmm0
-    movss f_2(%rip), %xmm1
-    divss %xmm1, %xmm0
-    movss %xmm0, 16(%rcx)
-
-    # calculate aspect ratio of the camera
-
-    # get camera size in ints
-    movq $VIEW_WIDTH, %r8
-    movq $VIEW_HEIGHT, %r9
-
-    # convert to floats
-    cvtsi2ss %r8, %xmm0
-    cvtsi2ss %r9, %xmm1
-
-    # aspect ratio = width / height
-    divss %xmm1, %xmm0
-    movss %xmm0, 20(%rcx)
-
-    EPILOGUE
 
 # check input and do player controls
 DoPlayerControls:

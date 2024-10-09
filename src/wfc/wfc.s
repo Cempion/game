@@ -40,7 +40,7 @@
 # 8  | 4 bytes = width
 # 12 | 4 bytes = height
 #
-# 16 | 8 bytes = pointer to ruleset. first byte is the ammount of modules, then 4 quads per module for each side.
+# 16 | 8 bytes = pointer to ruleset. first byte is the ammount of pieces, then 4 quads per piece for each side.
 # 24 | 8 bytes = pointer to onChange subroutine %rcx = tile index, %rdx = tile possibilities. 
 #                is called when a tile is collapsed to an entropy of 1 or 0, or is uncollapsed from said entropies.
 #
@@ -115,7 +115,7 @@ CreateWfc:
     movl 4(%rsp), %eax              # get tilecount
     inc %rax                        # tilecount + 1
     shl $2, %rax                    # same as (tilecount + 1) * 4 bytes
-    movb (%r8), %dl                 # get module count (first byte in ruleset is max_entropy)
+    movb (%r8), %dl                 # get piece count (first byte in ruleset is max_entropy)
     mul %rdx                        # multiply by max_entropy
     add $4, %rax                    # add 4 bytes for structure size
 
@@ -832,13 +832,13 @@ CheckRemoval:
             bsf %r8, %rcx                                   # get index of first 1 bit
             add %rcx, %rsi                                  # add bit index to total for the correct possibility index
 
-            # get possible possibilities on the given side of the current module
+            # get possible possibilities on the given side of the current piece
 
             movq $4, %rax                                           # 4 since there are 4 sides (west, east, south, north)
-            mul %rsi                                                # 4 * module
+            mul %rsi                                                # 4 * piece
             add %rbx, %rax                                          # add side to rax for index to find possibilities
 
-            orq 1(%rdi, %rax, 8), %r10                              # union possible possibilities of this module with total
+            orq 1(%rdi, %rax, 8), %r10                              # union possible possibilities of this piece with total
 
             # shift possibilities for next bsf instruction
 

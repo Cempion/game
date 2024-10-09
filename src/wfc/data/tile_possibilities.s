@@ -41,7 +41,7 @@ RegenTilePoss:
     movq %rcx, %r8
 
     GP_RULESET %rax, %r8                                    # get pointer to ruleset
-    G_MAX_MODULES %al, %rax                                 # ammount of possibilities to fill in
+    G_MAX_PIECES %al, %rax                                 # ammount of possibilities to fill in
 
     movq $64, %rcx                                           
     sub %rax, %rcx                                          # 64 - maxPossibilities = amount of bits to shift
