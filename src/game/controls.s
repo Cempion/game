@@ -6,6 +6,10 @@ temp: .float 0, 0
 .text
 
 # check input and do player controls
+# PARAMS:
+# %xmm0 =   dt as a single float
+# RETURNS:
+# void
 DoPlayerControls:
     PROLOGUE
 
@@ -25,17 +29,27 @@ DoPlayerControls:
     EPILOGUE
 
 # handles moving the camera using the keyboard
+# PARAMS:
+# %xmm0 =   dt as a single float
+# RETURNS:
+# void
 DoKeyControls:
     PROLOGUE
     push %r12
     push %r13 
-    subq $16, %rsp                      # allocate space for floats
-    movups %xmm6, (%rsp)
+    push %r14
+    push %r15
     SHADOW_SPACE
+    movss %xmm0, temp(%rip)
 
     leaq pressed_keys(%rip), %r12       # get pointer to pressed keys
     leaq player_cam(%rip), %r13         # get pointer to camera position
 
+    # calculate speed of movement
+    movss walk_speed(%rip), %xmm1 
+    mulss %xmm0, %xmm1
+    movd %xmm1, %r14
+break:
        # w
     cmpb $1, 0x57(%r12)      
     jne 1f           
@@ -44,20 +58,20 @@ DoKeyControls:
         # dir y
         movss 12(%r13), %xmm0
         call sinf
-        movss %xmm0, %xmm6
+        movd %xmm0, %r15
 
         # dir x
         movss 12(%r13), %xmm0
         call cosf
 
-        movss %xmm6, %xmm1                  # mov dir y to final location
+        movd %r15, %xmm1                    # mov dir y to final location
 
         # invert z axis
         movss f_min_1(%rip), %xmm5
         mulss %xmm5, %xmm1 
 
         # calculate movement
-        movss walk_speed(%rip), %xmm2       # get movement speed
+        movd %r14, %xmm2                    # get movement speed
         mulss %xmm2, %xmm0
         mulss %xmm2, %xmm1
 
@@ -81,13 +95,13 @@ DoKeyControls:
         # dir y
         movss 12(%r13), %xmm0
         call sinf
-        movss %xmm0, %xmm6
+        movd %xmm0, %r15
 
         # dir x
         movss 12(%r13), %xmm0
         call cosf
 
-        movss %xmm6, %xmm1                  # mov dir y to final location
+        movd %r15, %xmm1                    # mov dir y to final location
 
         # invert x and z axis
         movss f_min_1(%rip), %xmm5
@@ -95,7 +109,7 @@ DoKeyControls:
         mulss %xmm5, %xmm1 
 
         # calculate movement
-        movss walk_speed(%rip), %xmm2       # get movement speed
+        movd %r14, %xmm2                    # get movement speed
         mulss %xmm2, %xmm0
         mulss %xmm2, %xmm1
 
@@ -120,20 +134,20 @@ DoKeyControls:
         # dir y
         movss 12(%r13), %xmm0
         call sinf
-        movss %xmm0, %xmm6
+        movd %xmm0, %r15
 
         # dir x
         movss 12(%r13), %xmm0
         call cosf
 
-        movss %xmm6, %xmm1                  # mov dir y to final location
+        movd %r15, %xmm1                    # mov dir y to final location
 
         # invert x axis
         movss f_min_1(%rip), %xmm5
         mulss %xmm5, %xmm0
 
         # calculate movement
-        movss walk_speed(%rip), %xmm2       # get movement speed
+        movd %r14, %xmm2       # get movement speed
         mulss %xmm2, %xmm0
         mulss %xmm2, %xmm1
 
@@ -157,16 +171,16 @@ DoKeyControls:
         # dir y
         movss 12(%r13), %xmm0
         call sinf
-        movss %xmm0, %xmm6
+        movd %xmm0, %r15
 
         # dir x
         movss 12(%r13), %xmm0
         call cosf
 
-        movss %xmm6, %xmm1                  # mov dir y to final location
+        movd %r15, %xmm1                    # mov dir y to final location
 
         # calculate movement
-        movss walk_speed(%rip), %xmm2       # get movement speed
+        movd %r14, %xmm2       # get movement speed
         mulss %xmm2, %xmm0
         mulss %xmm2, %xmm1
 

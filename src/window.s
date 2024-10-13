@@ -56,8 +56,6 @@ opengl_context: .quad 0
 screen_width: .quad 0
 screen_height: .quad 0
 
-has_window: .byte 0
-
 .text
 
 .globl main
@@ -306,7 +304,7 @@ HandleEvent:
     EPILOGUE
 
 wm_destroy:
-    movq $0, has_window(%rip)               # set to false
+    movq $0, is_running(%rip)               # set to false
     jmp default
 
 wm_keydown:

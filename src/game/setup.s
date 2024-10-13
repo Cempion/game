@@ -10,14 +10,14 @@ map_wfc: .quad 0 # the pointer to the wfc running the map
 map_data: .skip WFC_TILE_COUNT
 
 player_cam:
-    .float 7.5, 2.5, 7.5 # position
+    .float 7.5, 2, 7.5 # position
     .float 0 # angle x
     .float 0 # angle y
     .float 0 # fov
     .float 0 # aspect ratio (view width / view height)
 
 mouse_sensitivity: .float 500 # low numbers mean high sensitivity
-walk_speed: .float 0.1 # low numbers mean high sensitivity
+walk_speed: .float 5
 
 .text
 
