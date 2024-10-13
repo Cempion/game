@@ -353,7 +353,7 @@ SetupRenderer:
     call glBindTexture
 
     # set texture parameters
-    PARAMS3 $GL_TEXTURE_2D, $GL_TEXTURE_MIN_FILTER, $GL_LINEAR
+    PARAMS3 $GL_TEXTURE_2D, $GL_TEXTURE_MIN_FILTER, $GL_NEAREST
     call glTexParameteri
     PARAMS3 $GL_TEXTURE_2D, $GL_TEXTURE_MAG_FILTER, $GL_NEAREST
     call glTexParameteri

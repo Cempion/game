@@ -1,12 +1,15 @@
 
 # version 430 core // glsl version
 
+precision highp float;
+
 in vec3 rayTarget;
 
 out vec4 color;
 
 uniform int blockHeight = 4;
 uniform float maxRayDist = 24;
+uniform float epsilon = 0.001;
 
 layout(std140) uniform CameraData {
     vec3 pos;
@@ -53,7 +56,7 @@ uint getBlock(vec2 pos) {
 }
 
 rayHit getHitX() {
-    float dir = step(0, rayTarget.x); // 0 if negative, 1 if positive
+    int dir = int(step(0, rayTarget.x)); // 0 if negative, 1 if positive
 
     // calculate first intersection on the x axis
     float multiplier = (1 - dir) * (fract(camera.pos.x) / -rayTarget.x) + dir * ((1 - fract(camera.pos.x)) / rayTarget.x);
@@ -62,10 +65,12 @@ rayHit getHitX() {
     vec3 rayStep = rayTarget / abs(rayTarget.x);
     float stepLength = length(rayStep);
 
-    float totalLength = distance(camera.pos, rayPos); 
+    float totalLength = distance(camera.pos, rayPos);
     // loop while block at position is open (first bit in block data)
-    while (((getBlock(rayPos.xz + vec2(0.5 * (dir - 0.5) * 2, 0)) & 1) == 0 ||
-            (getBlock(rayPos.xz + vec2(-0.5 * (dir - 0.5) * 2, 0)) & 1) == 1) 
+    while ((((getBlock(rayPos.xz + vec2(0.5 * (dir - 0.5) * 2, epsilon)) & 1) == 0 ||
+            (getBlock(rayPos.xz + vec2(-0.5 * (dir - 0.5) * 2, epsilon)) & 1) == 1) &&
+            ((getBlock(rayPos.xz + vec2(0.5 * (dir - 0.5) * 2, -epsilon)) & 1) == 0 ||
+            (getBlock(rayPos.xz + vec2(-0.5 * (dir - 0.5) * 2, -epsilon)) & 1) == 1))
             && totalLength < maxRayDist) {
 
         rayPos += rayStep;
@@ -77,7 +82,7 @@ rayHit getHitX() {
 }
 
 rayHit getHitZ() {
-    float dir = step(0, rayTarget.z); // 0 if negative, 1 if positive
+    int dir = int(step(0, rayTarget.z)); // 0 if negative, 1 if positive
 
     // calculate first intersection on the Z axis
     float multiplier = (1 - dir) * (fract(camera.pos.z) / -rayTarget.z) + dir * ((1 - fract(camera.pos.z)) / rayTarget.z);
@@ -88,8 +93,10 @@ rayHit getHitZ() {
 
     float totalLength = distance(camera.pos, rayPos); 
     // loop while block at position is open (first bit in block data)
-    while (((getBlock(rayPos.xz + vec2(0, 0.5 * (dir - 0.5) * 2)) & 1) == 0 ||
-            (getBlock(rayPos.xz + vec2(0, -0.5 * (dir - 0.5) * 2)) & 1) == 1)
+    while ((((getBlock(rayPos.xz + vec2(epsilon, 0.5 * (dir - 0.5) * 2)) & 1) == 0 ||
+            (getBlock(rayPos.xz + vec2(epsilon, -0.5 * (dir - 0.5) * 2)) & 1) == 1) &&
+            ((getBlock(rayPos.xz + vec2(-epsilon, 0.5 * (dir - 0.5) * 2)) & 1) == 0 ||
+            (getBlock(rayPos.xz + vec2(-epsilon, -0.5 * (dir - 0.5) * 2)) & 1) == 1)) 
             && totalLength < maxRayDist) {
 
         rayPos += rayStep;
