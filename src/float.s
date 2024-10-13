@@ -8,6 +8,7 @@ f_min_half_pi:  .float -1.57079632679489661923
 
 f_min_1:        .float -1
 f_0:            .float 0
+f_0.5:          .float 0.5
 f_1:            .float 1
 f_2:            .float 2
 f_3:            .float 3

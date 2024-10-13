@@ -1,7 +1,7 @@
 
 # get uncollapse queue pointer
 .macro GP_UNCOLL_QUEUE dest, wfcPointer
-    movq 72(\wfcPointer), \dest    # pointer to datastructure
+    movq 80(\wfcPointer), \dest    # pointer to datastructure
 .endm
 
 # gets the first tile in the uncollapse queue and updates uncollapse queue info, or -1 if empty

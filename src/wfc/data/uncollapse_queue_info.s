@@ -1,7 +1,7 @@
 
 # get uncollapse queue info pointer
 .macro GP_UNCOLL_QUEUE_INF dest, wfcPointer
-    movq 80(\wfcPointer), \dest                             # pointer to datastructure
+    movq 88(\wfcPointer), \dest                             # pointer to datastructure
 .endm
 
 # calls cmp for $0 ,"value in uncollapse queue info". if equal tile is not in uncollapse queue

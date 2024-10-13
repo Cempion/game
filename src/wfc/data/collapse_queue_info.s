@@ -1,7 +1,7 @@
 
 # get collapse queue info pointer
 .macro GP_COLL_QUEUE_INF dest, wfcPointer
-    movq 64(\wfcPointer), \dest    # pointer to datastructure
+    movq 72(\wfcPointer), \dest    # pointer to datastructure
 .endm
 
 # calls cmp for $-1 ,"value in collapse queue info". if equal tile is not in collapse queue

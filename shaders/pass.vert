@@ -1,6 +1,6 @@
 // pass through positions without changing anything
 
-# version 330 core // glsl version
+# version 430 core // glsl version
 
 layout(location = 0) in vec2 inPosition;
 layout(location = 1) in vec2 texPosition;

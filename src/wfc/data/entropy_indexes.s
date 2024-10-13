@@ -1,7 +1,7 @@
 
 # get entropy indexes pointer
 .macro GP_ENT_INDEXES dest, wfcPointer
-    movq 48(\wfcPointer), \dest                             # pointer to datastructure
+    movq 56(\wfcPointer), \dest                             # pointer to datastructure
 .endm
 
 # calls cmp for $0 ,"value in entropy list indexes". if equal tile is not in entropy list

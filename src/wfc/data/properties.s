@@ -24,6 +24,11 @@
     movq 24(\wfcPointer), \dest
 .endm
 
+# get pointer to piece weights
+.macro GP_WEIGHTS dest, wfcPointer
+    movq 32(\wfcPointer), \dest
+.endm
+
 # DATA STRUCTURE HELPERS
 #----------------------------------------------------------------------------------------------------------
 

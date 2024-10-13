@@ -32,7 +32,7 @@
 
 # same for queues exept the read and write index are on an offset of 4 and 8 respectively.
 
-.equ PROPERTIES_SIZE, 88
+.equ PROPERTIES_SIZE, 96
 
 # 0  | 4 bytes = wfc memory size in bytes
 # 4  | 4 bytes = tilecount
@@ -43,14 +43,16 @@
 # 16 | 8 bytes = pointer to ruleset. first byte is the ammount of pieces, then 4 quads per piece for each side.
 # 24 | 8 bytes = pointer to onChange subroutine %rcx = tile index, %rdx = tile possibilities. 
 #                is called when a tile is collapsed to an entropy of 1 or 0, or is uncollapsed from said entropies.
+# 32 | 8 bytes = pointer to piece weights, decides how likely it is that the piece is picked.
+#                piece weights are an array of longs without a size byte at the start, since the size of ruleset is used.
 #
-# 32 | 8 bytes = pointer to tile possibilities
-# 40 | 8 bytes = pointer to entropy list
-# 48 | 8 bytes = pointer to entropy indexes
-# 56 | 8 bytes = pointer to collapse check queue
-# 64 | 8 bytes = pointer to collapse check info (side to skip and wether tile is in queue)
-# 72 | 8 bytes = pointer to uncollapse check queue
-# 80 | 8 bytes = pointer to uncollapse check info (side to skip and wether tile is in queue)
+# 40 | 8 bytes = pointer to tile possibilities
+# 48 | 8 bytes = pointer to entropy list
+# 56 | 8 bytes = pointer to entropy indexes
+# 64 | 8 bytes = pointer to collapse check queue
+# 72 | 8 bytes = pointer to collapse check info (side to skip and wether tile is in queue)
+# 80 | 8 bytes = pointer to uncollapse check queue
+# 88 | 8 bytes = pointer to uncollapse check info (side to skip and wether tile is in queue)
 #
 # 4 bytes + 8 bytes * width * height = tile possibilities (so a max of 64 possibilities)
 #
@@ -76,20 +78,20 @@
 
 # creates a new wfc and returns its pointer.
 # PARAMS:
-# %rcx =    width
-# %rdx =    height
-# %r8  =    pointer to ruleset
-# %r9  =    pointer to onChange subroutine
+# %rcx =    width 4bytes height 4bytes
+# %rdx =    pointer to ruleset
+# %r8  =    pointer to onChange subroutine
+# %r9  =    pointer to piece weights
 # RETURNS:
 # %rax =    pointer to wfc, or 0 if it failed
 CreateWfc:
     PROLOGUE
 
     sub $PROPERTIES_SIZE, %rsp      # allocate space to push size, tilecount, width, height, and structure size on stack
-    movl %ecx, 8(%rsp)              # width
-    movl %edx, 12(%rsp)             # height
-    movq %r8, 16(%rsp)              # ruleset
-    movq %r9, 24(%rsp)              # onChange subroutine
+    movq %rcx, 8(%rsp)              # width height
+    movq %rdx, 16(%rsp)             # ruleset
+    movq %r8, 24(%rsp)              # onChange subroutine
+    movq %r9, 32(%rsp)              # piece weights
 
     #----------------------------------------------------------------------------------------------------------
     # CALCULATE SIZE IN BYTES
@@ -99,7 +101,7 @@ CreateWfc:
 
     # calculate tilecount
     movl 8(%rsp), %eax              # width
-    mull %edx                       # * height = tilecount
+    mull 12(%rsp)                   # * height = tilecount
     movl %eax, 4(%rsp)              # save tilecount to stack
 
     # tile possibilities size in bytes | 8 bytes * tilecount
@@ -107,7 +109,7 @@ CreateWfc:
     shl $3, %rax                    # same as 8 bytes * tilecount
     add $4, %rax                    # add 4 bytes for structure size
 
-    movq %rax, 32(%rsp)             # save size of structure on stack
+    movq %rax, 40(%rsp)             # save size of structure on stack
     add %rax, %rcx                  # add to total
 
     # entropy list size in bytes | 4 bytes * max_entropy * (tilecount + 1)
@@ -119,7 +121,7 @@ CreateWfc:
     mul %rdx                        # multiply by max_entropy
     add $4, %rax                    # add 4 bytes for structure size
 
-    movq %rax, 40(%rsp)             # save size of structure on stack
+    movq %rax, 48(%rsp)             # save size of structure on stack
     add %rax, %rcx                  # add to total
 
     # entropy indexes size in bytes | 4 bytes * tilecount
@@ -128,7 +130,7 @@ CreateWfc:
     shl $2, %rax                    # same as 4 bytes * tilecount
     add $4, %rax                    # add 4 bytes for structure size
 
-    movq %rax, 48(%rsp)             # save size of structure on stack
+    movq %rax, 56(%rsp)             # save size of structure on stack
     add %rax, %rcx                  # add to total
 
     # collapse check queue size in bytes | 4 bytes * tilecount + 8 bytes
@@ -137,7 +139,7 @@ CreateWfc:
     shl $2, %rax                    # same as 4 bytes * tilecount
     add $16, %rax                   # add 16 bytes for size, read and write index and padding
 
-    movq %rax, 56(%rsp)             # save size of structure on stack
+    movq %rax, 64(%rsp)             # save size of structure on stack
     add %rax, %rcx                  # add to total
 
     # collapse check queue info size in bytes | 1 byte * tilecount
@@ -145,7 +147,7 @@ CreateWfc:
     movl 4(%rsp), %eax              # get tilecount
     add $4, %rax                    # add 4 bytes for structure size
 
-    movq %rax, 64(%rsp)             # save size of structure on stack
+    movq %rax, 72(%rsp)             # save size of structure on stack
     add %rax, %rcx                  # add to total
 
     # uncollapse check queue size in bytes | 4 bytes * tilecount + 8 bytes
@@ -154,7 +156,7 @@ CreateWfc:
     shl $2, %rax                    # same as 4 bytes * tilecount
     add $16, %rax                   # add 16 bytes for size, read and write index and padding
 
-    movq %rax, 72(%rsp)             # save size of structure on stack
+    movq %rax, 80(%rsp)             # save size of structure on stack
     add %rax, %rcx                  # add to total
 
     # uncollapse check queue info size in bytes | 1 byte * tilecount
@@ -162,7 +164,7 @@ CreateWfc:
     movl 4(%rsp), %eax              # get tilecount
     add $4, %rax                    # add 4 bytes for structure size
 
-    movq %rax, 80(%rsp)             # save size of structure on stack
+    movq %rax, 88(%rsp)             # save size of structure on stack
     add %rax, %rcx                  # add to total
 
     movl %ecx, (%rsp)               # save total size
@@ -200,6 +202,9 @@ CreateWfc:
     movq 24(%rsp), %rdx
     movq %rdx, 24(%rax)             # onChange subroutine pointer
 
+    movq 32(%rsp), %rdx
+    movq %rdx, 32(%rax)             # piece weights pointer
+
     #----------------------------------------------------------------------------------------------------------
     # INITIALIZE POINTERS
     #----------------------------------------------------------------------------------------------------------
@@ -207,74 +212,74 @@ CreateWfc:
     movq %rax, %r8                  # use as "total" to set pointers
 
     add $PROPERTIES_SIZE, %r8       # calculate pointer to tile possibilities
-    movq %r8, 32(%rax)              # save pointer
-
-    add 32(%rsp), %r8               # calculate pointer to entropy list
     movq %r8, 40(%rax)              # save pointer
 
-    add 40(%rsp), %r8               # calculate pointer to entropy indexes
+    add 40(%rsp), %r8               # calculate pointer to entropy list
     movq %r8, 48(%rax)              # save pointer
 
-    add 48(%rsp), %r8               # calculate pointer to collapse check queue
+    add 48(%rsp), %r8               # calculate pointer to entropy indexes
     movq %r8, 56(%rax)              # save pointer
 
-    add 56(%rsp), %r8               # calculate pointer to collapse check queue info
+    add 56(%rsp), %r8               # calculate pointer to collapse check queue
     movq %r8, 64(%rax)              # save pointer
 
-    add 64(%rsp), %r8               # calculate pointer to uncollapse check queue
+    add 64(%rsp), %r8               # calculate pointer to collapse check queue info
     movq %r8, 72(%rax)              # save pointer
 
-    add 72(%rsp), %r8               # calculate pointer to uncollapse check queue info
+    add 72(%rsp), %r8               # calculate pointer to uncollapse check queue
     movq %r8, 80(%rax)              # save pointer
+
+    add 80(%rsp), %r8               # calculate pointer to uncollapse check queue info
+    movq %r8, 88(%rax)              # save pointer
 
     #----------------------------------------------------------------------------------------------------------
     # INITIALIZE DATA STRUCTURE SIZE VALUE
     #----------------------------------------------------------------------------------------------------------
     
     # tile possibilities
-    movq 32(%rsp), %r8              # get size
-    movq 32(%rax), %r9              # get pointer
+    movq 40(%rsp), %r8              # get size
+    movq 40(%rax), %r9              # get pointer
     sub $4, %r8                     # remove the 4 bytes used to store size
     shr $3, %r8                     # element size in bytes / 8 = size in quads
     movl %r8d, (%r9)                # save size
 
     # entropy list
-    movq 40(%rsp), %r8              # get size
-    movq 40(%rax), %r9              # get pointer
-    sub $4, %r8                     # remove the 4 bytes used to store size (size does not include itself)
-    shr $2, %r8                     # element size in bytes / 4 = size in doubles
-    movl %r8d, (%r9)                # save size
-
-    # entropy indexes
     movq 48(%rsp), %r8              # get size
     movq 48(%rax), %r9              # get pointer
     sub $4, %r8                     # remove the 4 bytes used to store size (size does not include itself)
     shr $2, %r8                     # element size in bytes / 4 = size in doubles
     movl %r8d, (%r9)                # save size
 
-    # collapse check queue
+    # entropy indexes
     movq 56(%rsp), %r8              # get size
     movq 56(%rax), %r9              # get pointer
+    sub $4, %r8                     # remove the 4 bytes used to store size (size does not include itself)
+    shr $2, %r8                     # element size in bytes / 4 = size in doubles
+    movl %r8d, (%r9)                # save size
+
+    # collapse check queue
+    movq 64(%rsp), %r8              # get size
+    movq 64(%rax), %r9              # get pointer
     sub $12, %r8                    # remove the 12 bytes used to store size and read/write index
     shr $2, %r8                     # element size in bytes / 4 = size in doubles
     movl %r8d, (%r9)                # save size
 
     # collapse check queue info
-    movq 64(%rsp), %r8              # get size
-    movq 64(%rax), %r9              # get pointer
+    movq 72(%rsp), %r8              # get size
+    movq 72(%rax), %r9              # get pointer
     sub $4, %r8                     # remove the 4 bytes used to store size (size does not include itself)
     movl %r8d, (%r9)                # save size
 
     # uncollapse check queue
-    movq 72(%rsp), %r8              # get size
-    movq 72(%rax), %r9              # get pointer
+    movq 80(%rsp), %r8              # get size
+    movq 80(%rax), %r9              # get pointer
     sub $12, %r8                    # remove the 12 bytes used to store size and read/write index
     shr $2, %r8                     # element size in bytes / 4 = size in doubles
     movl %r8d, (%r9)                # save size
 
     # uncollapse check queue info
-    movq 80(%rsp), %r8              # get size
-    movq 80(%rax), %r9              # get pointer
+    movq 88(%rsp), %r8              # get size
+    movq 88(%rax), %r9              # get pointer
     sub $4, %r8                     # remove the 4 bytes used to store size (size does not include itself)
     movl %r8d, (%r9)                # save size
 
@@ -611,9 +616,9 @@ CollapsePossibilities:
     movq %rdx, %r13                                         # save tile index in callee saved register
 
     GP_TILE_POSS %r8, %rcx
-    G_POSS %rcx, %rdx, %r8                                  # get possibilities of tile
+    G_POSS %r9, %rdx, %r8                                   # get possibilities of tile
 
-    PARAMS1 %rcx
+    PARAMS2 %r12, %r9
     call PickPossibility
 
     movq %rax, %rcx                                         # since only rcx works with bitshifts
@@ -639,22 +644,100 @@ CollapsePossibilities:
 
 # picks a random possibility from the possibilities of the given tile and returns it
 # PARAMS:
-# %rcx =    the possibilities to pick from
+# %rcx =    pointer to wfc
+# %rdx =    the possibilities to pick from
 # RETURNS:
 # %rax =    the picked possibility
 PickPossibility:
     PROLOGUE
 
-    RANDOM %eax                                             # get random number
+    movq %rcx, %rdi                                     # move wfc pointer to free rcx for shr
+    movq %rdx, %r10                                     # copy tile possibilities since rdx will change in loop
 
-    popcnt %rcx, %r8                                        # get bitcount of possibilities
+    # get total weight
 
-    movq $0, %rdx                                           # make 0 to prep for modulo
-    div %r8                                                 # random % entropy
+    popcnt %rdx, %r8                                    # get bitcount of possibilities and use as loop counter
+    movq $0, %r9                                        # use as current possibility index
+    movq $0, %r11                                       # the resulting total weight
+    GP_WEIGHTS %rsi, %rdi
+    1: # loop over possibilities
+        cmp $0, %r8                                     # if counter is 0 stop loop
+        je 2f
 
-    PARAMS2 %rcx, %rdx
-    call GetNthPossibility                                  # get actual possibility index
+        bsf %rdx, %rcx                                  # get index of first 1 bit
+        add %rcx, %r9                                   # add bit index to total for the correct possibility index
 
+        # count up weight
+
+        addl (%rsi, %r9, 4), %r11d                      # add weight of possibility to total
+
+        # shift possibilities for next bsf instruction
+
+        inc %rcx                                        # bit index + 1
+        inc %r9                                         # since rcx got incremented
+        shr %cl, %rdx                                   # shift to after the first 1 bit
+
+        dec %r8                                         # decrease counter
+        jmp 1b
+
+    2: # end possibility loop
+
+    cmp $0, %r11                                        # if total weight is 0
+    je 3f                                               # pick without weights
+
+    # pick with weights
+
+    # get random number
+    RANDOM %eax                                         # get random number
+    movq $0, %rdx                                       # make 0 to prep for modulo
+    div %r11                                            # random % max weight
+    movq %rdx, %rax                                     # move remainder
+
+    # get picked possibility
+    movq %r10, %rdx                                     # copy tile possibilities since rdx will change in loop
+    popcnt %rdx, %r8                                    # get bitcount of possibilities and use as loop counter
+    movq $0, %r9                                        # use as current possibility index
+    1: # loop over possibilities (again yey)
+        cmp $0, %r8                                     # if counter is 0 stop loop
+        je 2f
+
+        bsf %rdx, %rcx                                  # get index of first 1 bit
+        add %rcx, %r9                                   # add bit index to total for the correct possibility index
+
+        # count up weight
+
+        movl (%rsi, %r9, 4), %edi                       # get weight of current piece
+        cmpl %edi, %eax                                 # if random number is less than the weight
+        jl 2f                                           # exit loop with the result in r9
+
+        subl %edi, %eax                                 # subtract the weight from the random number
+
+        # shift possibilities for next bsf instruction
+
+        inc %rcx                                        # bit index + 1
+        inc %r9                                         # since rcx got incremented
+        shr %cl, %rdx                                   # shift to after the first 1 bit
+
+        dec %r8                                         # decrease counter
+        jmp 1b
+
+    2: # end possibility loop
+    movq %r9, %rax                                      # return result of loop
+    jmp 4f
+
+    3: # pick without weights
+
+    # get random number
+    popcnt %r10, %r8                                    # get entropy
+    RANDOM %eax                                         # get random number
+    movq $0, %rdx                                       # make 0 to prep for modulo
+    div %r8                                             # random % entropy
+
+    # get possibility
+    PARAMS2 %r10, %rdx
+    call GetNthPossibility
+
+    4: # function return
     EPILOGUE
 
 # gets the n-th possibility of the given possibilities
@@ -804,18 +887,18 @@ CheckRemoval:
 
     G_ENT %rcx %r13, %r15                                   # get entropy of current tile
     cmp $0, %rcx                                            # if tile has no possibilities
-    je side_loop_end                                        # skip checking
+    je 2f                                                   # skip checking
 
-    side_loop:
+    1: # loop over side
         # loop housekeeping
         cmp $0, %rbx                                        # if counter is 0
-        je side_loop_end                                    # end loop
+        je 2f                                               # end loop
 
         dec %rbx                                            # decrease counter
 
         G_SIDE_TO_SKIP %cl, %r13, %r14                      # get the side to skip                  
         cmp %rcx, %rbx                                      # if side to skip is the same as the current side
-        je side_loop                                        # skip current iteration
+        je 1b                                               # skip current iteration
 
         # actual code to loop
 
@@ -825,9 +908,9 @@ CheckRemoval:
         popcnt %r8, %r9                                     # get entropy (amount of possibilities) and use as counter
         movq $0, %r10                                       # use as resulting possible possibilities on the given side
         movq $0, %rsi                                       # use as possibility index counter
-        possibility_loop:
+        3: # loop over possibilities
             cmp $0, %r9                                     # if counter is 0 stop loop
-            je possibility_loop_end
+            je 4f
 
             bsf %r8, %rcx                                   # get index of first 1 bit
             add %rcx, %rsi                                  # add bit index to total for the correct possibility index
@@ -847,9 +930,9 @@ CheckRemoval:
             shr %cl, %r8                                    # shift to after the first 1 bit
 
             dec %r9                                         # decrease counter
-            jmp possibility_loop
+            jmp 3b
 
-        possibility_loop_end:
+        4: # end possibility loop
 
         # intersect neighbour with possible possibilities
 
@@ -869,7 +952,7 @@ CheckRemoval:
         # if changed add neighbour to check queue
 
         cmp $0, %rax                                        # if intersect did not change neighbour
-        je side_loop                                        # skip putting the neighbour in check list
+        je 1b                                               # skip putting the neighbour in check list
 
         movq %rbx, %rax
         xorq $1, %rax                                       # get opposite side
@@ -877,9 +960,9 @@ CheckRemoval:
         PARAMS3 %r12, %rdx, %rax                            # wfc pointer, neighbour index, opposite side
         call EnqCollQueue
 
-        jmp side_loop
+        jmp 1b
 
-    side_loop_end:
+    2: # stop side loop
 
     GP_COLL_QUEUE_INF %r8, %r12
     S_SIDE_TO_SKIP $-1, %r13, %r8                           # clear side to skip so tile can be put in queue again

@@ -1,7 +1,7 @@
 
 # get tile possibilities pointer
 .macro GP_TILE_POSS dest, wfcPointer
-    movq 32(\wfcPointer), \dest                             # pointer to datastructure
+    movq 40(\wfcPointer), \dest                             # pointer to datastructure
 .endm
 
 # get possibilities of the given tile
@@ -41,7 +41,7 @@ RegenTilePoss:
     movq %rcx, %r8
 
     GP_RULESET %rax, %r8                                    # get pointer to ruleset
-    G_MAX_PIECES %al, %rax                                 # ammount of possibilities to fill in
+    G_MAX_PIECES %al, %rax                                  # ammount of possibilities to fill in
 
     movq $64, %rcx                                           
     sub %rax, %rcx                                          # 64 - maxPossibilities = amount of bits to shift

@@ -1,7 +1,7 @@
 
 # get collapse queue pointer
 .macro GP_COLL_QUEUE dest, wfcPointer
-    movq 56(\wfcPointer), \dest                             # pointer to datastructure
+    movq 64(\wfcPointer), \dest                             # pointer to datastructure
 .endm
 
 # gets the first tile in the collapse queue, or -1 if empty. caller is responsible for clearing collapse queue info!

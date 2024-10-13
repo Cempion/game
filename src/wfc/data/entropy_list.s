@@ -1,7 +1,7 @@
 
 # get entropy list pointer
 .macro GP_ENT_LIST dest, wfcPointer
-    movq 40(\wfcPointer), \dest                             # pointer to datastructure
+    movq 48(\wfcPointer), \dest                             # pointer to datastructure
 .endm
 
 # used by entropy list to get the pointer to the entropy sublist to modify, stores result in %rax

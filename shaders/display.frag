@@ -1,6 +1,6 @@
 // displays the final render on the window
 
-# version 330 core // glsl version
+# version 430 core // glsl version
 
 in vec2 texPos;
 

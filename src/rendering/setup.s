@@ -1,6 +1,6 @@
 # how many pixels to render (rays to cast)
-.equ RENDER_WIDTH, 128 #256
-.equ RENDER_HEIGHT, 144 #144
+.equ RENDER_WIDTH, 256 #256
+.equ RENDER_HEIGHT, 288 #144
 
 # used to calculate the ratio between width and height for the view, decides which direction 
 # the rays are cast and the final size of the view on the screen
@@ -28,7 +28,17 @@ vbo_data:
 camera_ubo: .quad 0 # the uniform buffer object that stores the needed camera data in 6 floats
 
 render_fbo: .quad 0 # the framebuffer object used to render the scene too.
+
+# textures
+
+# unit 0
 scene_tex: .quad 0 # the 2d texture used to render the scene in the render fbo.
+# unit 1
+map_texture: .quad 0 # a 2d texture containing the map data
+# unit 2
+piece_texture: .quad 0 # a 3d texture containing the piece data
+# unit 3
+block_texture: .quad 0 # a 1d texture containing the block data
 
 # 8 spaces to make space for a quad
 raycaster_vert_shader:  .asciz "        shaders\\raycasting\\raycaster.vert"
@@ -42,6 +52,10 @@ display_frag_shader:    .asciz "        shaders\\display.frag"
 # uniform names
 scene_uniform: .asciz "scene"
 
+map_uniform: .asciz "mapData"
+piece_uniform: .asciz "pieceData"
+block_uniform: .asciz "blockData"
+
 read_mode: .asciz "rb" # mode to use when reading shader code, rd = read binary
 
 #----------------------------------------------------------------------------------------------------------
@@ -54,6 +68,10 @@ SetupRenderer:
     SHADOW_SPACE
 
     call LoadOpenGlMethods                  # load opengl methods that are not included in windows
+
+    # enable VSync
+    PARAMS1 $1
+    call *wglSwapIntervalEXT(%rip)
 
     #----------------------------------------------------------------------------------------------------------
     # Shaders
@@ -85,6 +103,30 @@ SetupRenderer:
     call *glDeleteShader(%rip)
     PARAMS1 raycaster_frag_shader(%rip)
     call *glDeleteShader(%rip)
+
+    # bind mapData uniform to texture unit 1
+    PARAMS1 render_shader_program(%rip)
+    leaq map_uniform(%rip), %rdx
+    call *glGetUniformLocation(%rip)
+
+    PARAMS3 render_shader_program(%rip), %rax, $1
+    call *glProgramUniform1i(%rip)
+
+    # bind pieceData uniform to texture unit 2
+    PARAMS1 render_shader_program(%rip)
+    leaq piece_uniform(%rip), %rdx
+    call *glGetUniformLocation(%rip)
+
+    PARAMS3 render_shader_program(%rip), %rax, $2
+    call *glProgramUniform1i(%rip)
+
+    # bind blockData uniform to texture unit 3
+    PARAMS1 render_shader_program(%rip)
+    leaq block_uniform(%rip), %rdx
+    call *glGetUniformLocation(%rip)
+
+    PARAMS3 render_shader_program(%rip), %rax, $3
+    call *glProgramUniform1i(%rip)
 
     # make display shaders & program
 
@@ -120,7 +162,6 @@ SetupRenderer:
 
     PARAMS3 display_shader_program(%rip), %rax, $0
     call *glProgramUniform1i(%rip)
-    CHECK_OPENGL_ERROR
 
     #----------------------------------------------------------------------------------------------------------
     # Vertex Array Object
@@ -162,6 +203,113 @@ SetupRenderer:
     movq %rax, display_vbo(%rip)
 
     #----------------------------------------------------------------------------------------------------------
+    # Map Textures
+    #----------------------------------------------------------------------------------------------------------
+
+    # use correct settings for passing the data
+    PARAMS2 $GL_UNPACK_ALIGNMENT, $1
+    call glPixelStorei
+
+    # map data
+
+    # make texture for map data
+    PARAMS1 $1
+    leaq map_texture(%rip), %rdx
+    call glGenTextures
+
+    # bind texture
+    PARAMS1 $GL_TEXTURE1
+    call *glActiveTexture(%rip)
+    PARAMS2 $GL_TEXTURE_2D, map_texture(%rip)
+    call glBindTexture
+
+    # set texture parameters
+    PARAMS3 $GL_TEXTURE_2D, $GL_TEXTURE_MIN_FILTER, $GL_NEAREST
+    call glTexParameteri
+    PARAMS3 $GL_TEXTURE_2D, $GL_TEXTURE_MAG_FILTER, $GL_NEAREST
+    call glTexParameteri
+
+    PARAMS3 $GL_TEXTURE_2D, $GL_TEXTURE_WRAP_S, $GL_REPEAT
+    call glTexParameteri
+    PARAMS3 $GL_TEXTURE_2D, $GL_TEXTURE_WRAP_T, $GL_REPEAT
+    call glTexParameteri
+
+    sub $8, %rsp                            # allign stack
+    # target, level, internal_format, width, height, border, external_format, type, data
+    PARAMS9 $GL_TEXTURE_2D, $0, $GL_R8UI, $WFC_WIDTH, $WFC_HEIGHT, $0, $GL_RED_INTEGER, $GL_UNSIGNED_BYTE, $0
+    SHADOW_SPACE
+    call glTexImage2D
+    add $80, %rsp                           # restore stack pointer
+
+    # piece data
+
+    # make texture for piece data
+    PARAMS1 $1
+    leaq piece_texture(%rip), %rdx
+    call glGenTextures
+
+    # bind texture
+    PARAMS1 $GL_TEXTURE2
+    call *glActiveTexture(%rip)
+    PARAMS2 $GL_TEXTURE_2D_ARRAY, piece_texture(%rip)
+    call glBindTexture
+
+    # set texture parameters
+    PARAMS3 $GL_TEXTURE_2D_ARRAY, $GL_TEXTURE_MIN_FILTER, $GL_NEAREST
+    call glTexParameteri
+    PARAMS3 $GL_TEXTURE_2D_ARRAY, $GL_TEXTURE_MAG_FILTER, $GL_NEAREST
+    call glTexParameteri
+
+    PARAMS3 $GL_TEXTURE_2D_ARRAY, $GL_TEXTURE_WRAP_S, $GL_REPEAT
+    call glTexParameteri
+    PARAMS3 $GL_TEXTURE_2D_ARRAY, $GL_TEXTURE_WRAP_T, $GL_REPEAT
+    call glTexParameteri
+
+    # get parameters to allocate piece texture
+    movzb piece_sockets(%rip), %rdi         # get piece count
+    incq %rdi                               # add space for piece 0 (error piece)
+    leaq piece_data(%rip), %rsi             # get data to put in texture
+
+    # target, level, internal_format, width, height, depth, border, external_format, type, data
+    PARAMS10 $GL_TEXTURE_2D_ARRAY, $0, $GL_R8UI, $PIECE_SIZE, $PIECE_SIZE, %rdi, $0, $GL_RED_INTEGER, $GL_UNSIGNED_BYTE, %rsi
+    SHADOW_SPACE
+    call *glTexImage3D(%rip)
+    add $80, %rsp                           # restore stack pointer
+
+    # block data
+
+    # make texture for block data
+    PARAMS1 $1
+    leaq block_texture(%rip), %rdx
+    call glGenTextures
+
+    # bind texture
+    PARAMS1 $GL_TEXTURE3
+    call *glActiveTexture(%rip)
+    PARAMS2 $GL_TEXTURE_1D, block_texture(%rip)
+    call glBindTexture
+
+    # set texture parameters
+    PARAMS3 $GL_TEXTURE_1D, $GL_TEXTURE_MIN_FILTER, $GL_NEAREST
+    call glTexParameteri
+    PARAMS3 $GL_TEXTURE_1D, $GL_TEXTURE_MAG_FILTER, $GL_NEAREST
+    call glTexParameteri
+
+    PARAMS3 $GL_TEXTURE_1D, $GL_TEXTURE_WRAP_S, $GL_CLAMP_TO_BORDER
+    call glTexParameteri
+
+    # get parameters to allocate piece texture
+    movzb blocks(%rip), %rdi                # get block count
+    leaq blocks(%rip), %rsi                 # get data to put in texture
+    incq %rsi                               # correct for size byte
+
+    # target, level, internal_format, width, border, external_format, type, data
+    PARAMS8 $GL_TEXTURE_1D, $0, $GL_R16UI, %rdi, $0, $GL_RED_INTEGER, $GL_UNSIGNED_SHORT, %rsi
+    SHADOW_SPACE
+    call glTexImage1D
+    add $64, %rsp                           # restore stack pointer
+
+    #----------------------------------------------------------------------------------------------------------
     # Camera UBO
     #----------------------------------------------------------------------------------------------------------
 
@@ -174,8 +322,8 @@ SetupRenderer:
     PARAMS2 $GL_UNIFORM_BUFFER, camera_ubo(%rip)
     call *glBindBuffer(%rip)
     
-    # target, size in bytes (6 * 4), data (null for now), usage
-    PARAMS4 $GL_UNIFORM_BUFFER, $24, $0, $GL_DYNAMIC_DRAW
+    # target, size in bytes (7 * 4), data (null for now), usage
+    PARAMS4 $GL_UNIFORM_BUFFER, $28, $0, $GL_DYNAMIC_DRAW
     call *glBufferData(%rip)
 
     # bind camera ubo to base 0
@@ -242,6 +390,7 @@ SetupRenderer:
     PARAMS2 $GL_FRAMEBUFFER, $0
     call *glBindFramebuffer(%rip)
 
+    CHECK_OPENGL_ERROR
     EPILOGUE
 
 

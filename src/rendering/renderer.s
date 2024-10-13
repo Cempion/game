@@ -27,9 +27,31 @@ RenderFrame:
     call *glBindBuffer(%rip)
 
     # target, offset, size, pointer to data to write to ubo
-    PARAMS3 $GL_UNIFORM_BUFFER, $0, $24 
+    PARAMS3 $GL_UNIFORM_BUFFER, $0, $28 
     leaq player_cam(%rip), %r9
     call *glBufferSubData(%rip)
+
+    # update map texture
+
+    # bind texture
+    PARAMS1 $GL_TEXTURE1
+    call *glActiveTexture(%rip)
+    PARAMS2 $GL_TEXTURE_2D, map_texture(%rip)
+    call glBindTexture
+
+    # get pointer to data
+    leaq map_data(%rip), %rsi
+
+    # use correct settings for passing the data
+    PARAMS2 $GL_UNPACK_ALIGNMENT, $1
+    call glPixelStorei
+
+    sub $8, %rsp                                # allign stack
+    # target, level, xOffset, yOffset, width, height, external_format, type, data
+    PARAMS9 $GL_TEXTURE_2D, $0, $0, $0, $WFC_WIDTH, $WFC_HEIGHT, $GL_RED_INTEGER, $GL_UNSIGNED_BYTE, %rsi
+    SHADOW_SPACE
+    call glTexSubImage2D
+    add $80, %rsp                               # restore stack pointer
 
     #----------------------------------------------------------------------------------------------------------
     # Render Scene
@@ -70,6 +92,10 @@ RenderFrame:
 
     # display scene to window
 
+    # enable gamma correction
+    PARAMS1 $GL_FRAMEBUFFER_SRGB
+    call glEnable
+
     # unbind framebuffer to use default
     PARAMS2 $GL_FRAMEBUFFER, $0
     call *glBindFramebuffer(%rip)
@@ -93,6 +119,10 @@ RenderFrame:
     # swap buffers
     PARAMS1 device_context(%rip)
     call SwapBuffers
+
+    # disable gamma correction
+    PARAMS1 $GL_FRAMEBUFFER_SRGB
+    call glDisable
 
     CHECK_OPENGL_ERROR
     EPILOGUE

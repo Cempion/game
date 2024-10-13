@@ -1,5 +1,5 @@
 
-# version 330 core // glsl version
+# version 430 core // glsl version
 
 layout(location = 0) in vec2 inPosition;
 layout(location = 1) in vec2 texPosition;
@@ -8,7 +8,7 @@ out vec2 pos;
 out vec3 rayTarget;
 
 layout(std140) uniform CameraData {
-    vec2 pos;
+    vec3 pos;
     float angleX;
     float angleY;
     float fov;

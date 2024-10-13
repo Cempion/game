@@ -1,11 +1,12 @@
 .include "float.s"
 .include "macro.s"
 .include "window.s"
-.include "rendering/renderer.s"
 
-.include "game/map.s"
+.include "game/pieces.s"
 .include "game/setup.s"
 .include "game/controls.s"
+
+.include "rendering/renderer.s"
 
 .data
 
@@ -33,12 +34,13 @@ main:
 
     call CreateWindow
 
-    call SetupRenderer
-
     call SetupGame
+
+    call SetupRenderer
 
     # show window
 
+    call RenderFrame                        # make sure first frame isn't black
     PARAMS2 window_handle(%rip), $1
     call ShowWindow
 

@@ -1,4 +1,8 @@
 
+.equ WFC_WIDTH, 50
+.equ WFC_HEIGHT, 50
+.equ WFC_TILE_COUNT, WFC_WIDTH * WFC_HEIGHT
+
 .data 
 
 map_wfc: .quad 0 # the pointer to the wfc running the map
@@ -6,13 +10,14 @@ map_wfc: .quad 0 # the pointer to the wfc running the map
 map_data: .skip WFC_TILE_COUNT
 
 player_cam:
-    .float 0, 0 # position
+    .float 7.5, 2.5, 7.5 # position
     .float 0 # angle x
     .float 0 # angle y
     .float 0 # fov
     .float 0 # aspect ratio (view width / view height)
 
 mouse_sensitivity: .float 500 # low numbers mean high sensitivity
+walk_speed: .float 0.1 # low numbers mean high sensitivity
 
 .text
 
@@ -24,10 +29,18 @@ SetupGame:
     # Setup wfc
     #----------------------------------------------------------------------------------------------------------
 
+    call CalculatePieces
+
     call CalculateRuleset
 
-    PARAMS3 $WFC_WIDTH, $WFC_HEIGHT, wfc_ruleset(%rip)
-    lea wfcOnChange(%rip), %r9
+    # pack width and height
+    movq $WFC_WIDTH, %rcx
+    shl $32, %rcx
+    orq $WFC_HEIGHT, %rcx
+
+    PARAMS2 %rcx, wfc_ruleset(%rip)
+    leaq WfcOnChange(%rip), %r8
+    leaq piece_weights(%rip), %r9
     call CreateWfc
 
     movq %rax, map_wfc(%rip)
@@ -35,7 +48,7 @@ SetupGame:
     PARAMS1 %rax
     call CollapseAllTiles
 
-    call printWfc
+    call PrintWfc
 
     #----------------------------------------------------------------------------------------------------------
     # Setup PlayerCam
@@ -47,7 +60,7 @@ SetupGame:
     movss f_pi(%rip), %xmm0
     movss f_2(%rip), %xmm1
     divss %xmm1, %xmm0
-    movss %xmm0, 16(%rcx)
+    movss %xmm0, 20(%rcx)
 
     # calculate aspect ratio of the camera
 
@@ -61,6 +74,6 @@ SetupGame:
 
     # aspect ratio = width / height
     divss %xmm1, %xmm0
-    movss %xmm0, 20(%rcx)
+    movss %xmm0, 24(%rcx)
 
     EPILOGUE
