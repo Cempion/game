@@ -193,6 +193,16 @@
     movq %rdx, \value                       # return result
 .endm
 
+.macro MAX_FLOAT dest, value1, value2
+    movss \value1, \dest
+    ucomiss \value1, \value2
+    jl end\@
+
+    movss \value2, \dest
+
+    end\@:
+.endm
+
 .macro RANDOM dest
     loop_\@:
     RDRAND \dest

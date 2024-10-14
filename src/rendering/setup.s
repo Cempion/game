@@ -391,6 +391,38 @@ SetupRenderer:
     call *glBindFramebuffer(%rip)
 
     CHECK_OPENGL_ERROR
+
+    #----------------------------------------------------------------------------------------------------------
+    # Setup Camera
+    #----------------------------------------------------------------------------------------------------------
+
+    leaq camera(%rip), %rcx
+
+    # set camera fov to (120 degrees)
+    movss f_pi(%rip), %xmm0
+
+    movss f_3(%rip), %xmm1
+    divss %xmm1, %xmm0
+
+    movss f_2(%rip), %xmm1
+    mulss %xmm1, %xmm0
+
+    movss %xmm0, 20(%rcx)
+
+    # calculate aspect ratio of the camera
+
+    # get camera size in ints
+    movq $VIEW_WIDTH, %r8
+    movq $VIEW_HEIGHT, %r9
+
+    # convert to floats
+    cvtsi2ss %r8, %xmm0
+    cvtsi2ss %r9, %xmm1
+
+    # aspect ratio = width / height
+    divss %xmm1, %xmm0
+    movss %xmm0, 24(%rcx)
+
     EPILOGUE
 
 

@@ -110,12 +110,6 @@ ButtonReleased:
 HandleMouseMoveMsg:
     PROLOGUE
 
-    # move last position to past position
-    movq mouse_x(%rip), %r8
-    movq %r8, mouse_past_x(%rip)
-    movq mouse_y(%rip), %r8
-    movq %r8, mouse_past_y(%rip)
-
     movq %rcx, mouse_x(%rip)
     movq %rdx, mouse_y(%rip)
 
@@ -136,6 +130,18 @@ HandleMouseSetPos:
     movq %rdx, mouse_y(%rip)
     movq %rcx, mouse_past_x(%rip)
     movq %rdx, mouse_past_y(%rip)
+
+    EPILOGUE
+
+# updates the mouse listener at the end of the frame
+HandleMouseEndFrame:
+    PROLOGUE
+
+    # move last position to past position
+    movq mouse_x(%rip), %r8
+    movq %r8, mouse_past_x(%rip)
+    movq mouse_y(%rip), %r8
+    movq %r8, mouse_past_y(%rip)
 
     EPILOGUE
 

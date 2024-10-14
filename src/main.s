@@ -2,11 +2,11 @@
 .include "macro.s"
 .include "window.s"
 
-.include "game/pieces.s"
 .include "game/setup.s"
-.include "game/controls.s"
 
 .include "rendering/renderer.s"
+
+.equ FRAME_RATE, 60 # the maximum framerate
 
 .data
 
@@ -15,7 +15,9 @@ hello_world: .asciz "Hello World!\n"
 is_running: .byte 0
 
 timer_frequency: .quad 0
-timer_start: .quad 0
+timer_start: .quad 0 
+
+frame_rate_format: .asciz "FrameRate: %f \n"
 
 .text
 
@@ -56,7 +58,19 @@ main:
 
     # get frequency of timer
     leaq timer_frequency(%rip), %rcx
-    call QueryPerformanceFrequency  
+    call QueryPerformanceFrequency 
+    movq timer_frequency(%rip), %rcx 
+
+    # calculate seconds per frame
+    movq $FRAME_RATE, %rdx
+    cvtsi2ss %rdx, %xmm1
+    movss f_1(%rip), %xmm0
+    divss %xmm1, %xmm0                      # 1 / frame_rate = seconds_per_frame
+
+    # calculate timer units per frame and store in r13 as integer
+    cvtsi2ss %rcx, %xmm1
+    mulss %xmm1, %xmm0                      # (1 / frame_rate) * timer_fequency = timer_units_per_frame
+    cvttss2si %xmm0, %r13
 
     # put in a starting value
     leaq timer_start(%rip), %rcx
@@ -66,7 +80,9 @@ main:
         cmpb $0, is_running(%rip)            # if true do loop
         jz end
 
-        # calculate delta time
+        #----------------------------------------------------------------------------------------------------------
+        # Cap Frame Rate
+        #----------------------------------------------------------------------------------------------------------
 
         # store last start time in r12
         movq timer_start(%rip), %r12
@@ -76,26 +92,39 @@ main:
         call QueryPerformanceCounter
 
         # get time difference
-        movq timer_start(%rip), %rax
-        subq %r12, %rax
+        movq timer_start(%rip), %rcx
+        subq %r12, %rcx
 
-        # get delta time
-        mov timer_frequency(%rip), %rbx
-        cvtsi2ss %rax, %xmm0                
-        cvtsi2ss %rbx, %xmm1                
-        divss %xmm1, %xmm0                          # (this - last) / frequency = dt   
+        # busy sleep
 
-        # save dt in callee saved register
-        movd %xmm0, %r12   
+        2: # do something to pass the time
+            
+            call PollEvents
 
-        # do the rest
+            # get current time
+            leaq timer_start(%rip), %rcx
+            call QueryPerformanceCounter
+            movq timer_start(%rip), %rcx
 
-        call RenderFrame
+            sub %r12, %rcx                          # get time difference
+            cmp %r13, %rcx                          # if time difference is less than time per frame
+            jl 2b                                   # continue busy sleep
+
+        call PrintFrameRate
+
+        #----------------------------------------------------------------------------------------------------------
+        # Game Loop
+        #----------------------------------------------------------------------------------------------------------
 
         call PollEvents
 
-        movd %r12, %xmm0                            # give dt as parameter 1                          
-        call DoPlayerControls
+        call RenderFrame
+
+        call DoEntityAi
+
+        call SimulateFrame
+
+        call HandleMouseEndFrame
 
         jmp sys_loop
 
@@ -106,6 +135,10 @@ main:
     end:
     
     # cleanup
+
+    # revert timer resolution
+    PARAMS1 $1
+    call timeEndPeriod
 
     PARAMS1 wfc_ruleset(%rip)
     call free
@@ -124,3 +157,28 @@ main:
 
     PARAMS1 $0
     call exit
+
+# prints the frame rate to the console based on the given difference between time ticks
+# PARAMS:
+# %rcx  =   difference between start and end time
+# RETURNS:
+# void
+PrintFrameRate:
+    PROLOGUE
+
+    # calculate framerate
+    cvtsi2sd %rcx, %xmm0                    # timer difference
+    movq timer_frequency(%rip), %rcx        # timer ticks per second
+    cvtsi2sd %rcx, %xmm1         
+    divsd %xmm1, %xmm0                      # delta time
+    movq $1, %rcx
+    cvtsi2sd %rcx, %xmm1                    
+    divsd %xmm0, %xmm1                      # frame rate
+
+    movq $0, %rax
+    leaq frame_rate_format(%rip), %rcx
+    movd %xmm1, %rdx
+    SHADOW_SPACE
+    call printf
+
+    EPILOGUE

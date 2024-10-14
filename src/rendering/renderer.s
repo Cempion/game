@@ -9,6 +9,15 @@ clear_color:
     .float 0 # blue
     .float 1 # alpha
 
+camera:
+    .float 0, 1.75, 0 # position
+    .float 0 # angle x
+    .float 0 # angle y
+    .float 0 # fov
+    .float 0 # aspect ratio (view width / view height)
+
+mouse_sensitivity: .float 500 # low numbers mean high sensitivity
+
 .text
 
 # renders the current frame and swaps the buffer so the frame is displayed
@@ -22,13 +31,25 @@ RenderFrame:
 
     # update camera ubo
 
+    # update camera angles based on user input
+    call DoCameraControls
+    
+    # update camera position based on entity with index 0
+    leaq entity_positions(%rip), %rcx                   # get pointer to entity positions
+    movl (%rcx), %eax                                   # get x position of entity 0
+    movl 4(%rcx), %edx                                  # get z position of entity 0
+
+    leaq camera(%rip), %r9
+    movl %eax, (%r9)                                    # move x position to x position of camera
+    movl %edx, 8(%r9)                                   # move z position to z position of camera
+
     # make sure camera ubo is bound
     PARAMS2 $GL_UNIFORM_BUFFER, camera_ubo(%rip)
     call *glBindBuffer(%rip)
 
     # target, offset, size, pointer to data to write to ubo
     PARAMS3 $GL_UNIFORM_BUFFER, $0, $28 
-    leaq player_cam(%rip), %r9
+    leaq camera(%rip), %r9
     call *glBufferSubData(%rip)
 
     # update map texture
@@ -125,4 +146,104 @@ RenderFrame:
     call glDisable
 
     CHECK_OPENGL_ERROR
+    EPILOGUE
+
+#----------------------------------------------------------------------------------------------------------
+# Camera Controls
+#----------------------------------------------------------------------------------------------------------
+
+# handles rotating the camera using the mouse
+DoCameraControls:
+    PROLOGUE
+
+    # skip checking mouse input if alt is pressed or window is not focussed
+
+    leaq pressed_keys(%rip), %rcx
+    cmpb $0, 0x12(%rcx)                                 # if the alt key is not pressed
+    jne 1f                                              # skip doing mouse controls
+
+    call GetForegroundWindow                            # get window on the foreground
+    cmpq %rax, window_handle(%rip)                      # if the game window is not on the foreground
+    jne 1f                                              # skip doing mouse controls
+
+    # do actual camera controls
+
+    push %r12
+    push %r13
+    subq $16, %rsp                      # allocate space for floats
+    movups %xmm6, (%rsp)
+    subq $16, %rsp                      # allocate space for floats
+    movups %xmm7, (%rsp)
+    leaq camera(%rip), %r12                         # get pointer to player camera struct
+
+    # calculate mouse movement this frame, %r8 = x, %r9 = y
+    movq mouse_x(%rip), %r8
+    sub mouse_past_x(%rip), %r8
+
+    movq mouse_y(%rip), %r9
+    sub mouse_past_y(%rip), %r9
+
+    # turn delta mouse positions into floats
+    cvtsi2ss %r8, %xmm0
+    cvtsi2ss %r9, %xmm1
+
+    # divide delta positions by 1000
+    divss mouse_sensitivity(%rip), %xmm0
+    divss mouse_sensitivity(%rip), %xmm1
+
+    # get player angles
+    movss 12(%r12), %xmm6
+    movss 16(%r12), %xmm7
+
+    # modify camara angle based on mouse movement
+    subss %xmm0, %xmm6
+    subss %xmm1, %xmm7
+
+    # loop angle x in range 0 - 2pi
+    movss %xmm6, %xmm0
+    movss f_tau(%rip), %xmm1
+    call fmodf
+
+    movd %xmm0, %eax                                    # get bits of the float
+    andl $0x80000000, %eax                              # and so only the sign bit is left
+    cmp $0, %eax                                        # if the float is not negative
+    je 2f                                               # skip correcting for minus
+
+    movss f_tau(%rip), %xmm1
+    addss %xmm1, %xmm0
+
+    2: # float is not negative
+    movss %xmm0, 12(%r12)
+
+    # clamp angle y in range -half pi - half pi
+    
+    movss f_half_pi(%rip), %xmm0
+    minps %xmm0, %xmm7
+
+    movss f_min_half_pi(%rip), %xmm0
+    maxps %xmm0, %xmm7
+
+    movss %xmm7, 16(%r12)
+
+    # put mouse cursor in the center of the screen
+
+    # get screen size
+    movq screen_width(%rip), %r12
+    movq screen_height(%rip), %r13
+    # devide by 2
+    shr $1, %r12
+    shr $1, %r13
+
+    SHADOW_SPACE
+    PARAMS2 %r12, %r13
+    call SetCursorPos                                   # set mouse position to the center of the screen
+
+    PARAMS2 %r12, %r13
+    call HandleMouseSetPos                              # make sure the listener works
+
+    movq -8(%rbp), %r12
+    movq -16(%rbp), %r13
+    movups -32(%rbp), %xmm6
+    movups -48(%rbp), %xmm7
+    1: # return
     EPILOGUE
