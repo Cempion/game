@@ -2,8 +2,12 @@
 .data
 
 player_size: .float 0.75
-player_walk_acceleration: .float 0.01666666666666 # 1 per second
-player_run_multiplier: .float 2
+player_height: .float 1.75
+# half width, half height (in pixels), texture index
+player_texture: .byte 0x43, 0
+
+player_walk_acceleration: .float 0.01
+player_run_multiplier: .float 3
 
 .text
 
@@ -19,8 +23,12 @@ player_run_multiplier: .float 2
 MakePlayer:
     PROLOGUE
 
-    movss player_size(%rip), %xmm1
-    leaq DoKeyControls(%rip), %r8
+    movss player_height(%rip), %xmm1    # height
+    movss player_size(%rip), %xmm2      # size
+    shufps $0, %xmm1, %xmm1             # fill entire register with second float
+    movss %xmm2, %xmm1                  # size height, 2 floats
+    movw player_texture(%rip), %r8w     # texture
+    leaq DoKeyControls(%rip), %r9       # ai subroutine
     call MakeEntity
 
     EPILOGUE

@@ -27,6 +27,11 @@ vbo_data:
 
 camera_ubo: .quad 0 # the uniform buffer object that stores the needed camera data in 6 floats
 
+entity_p_ssbo: .quad 0 # the shader storage buffer object used to store entity positions so they can be rendered
+entity_s_ssbo: .quad 0 # the shader storage buffer object used to store entity sizes so they can be rendered
+entity_h_ssbo: .quad 0 # the shader storage buffer object used to store entity heights so they can be rendered
+entity_t_ssbo: .quad 0 # the shader storage buffer object used to store entity textures so they can be rendered
+
 render_fbo: .quad 0 # the framebuffer object used to render the scene too.
 
 # textures
@@ -51,6 +56,8 @@ display_frag_shader:    .asciz "        shaders\\display.frag"
 
 # uniform names
 scene_uniform: .asciz "scene"
+
+entity_count_uniform: .asciz "entityCount"
 
 map_uniform: .asciz "mapData"
 piece_uniform: .asciz "pieceData"
@@ -328,6 +335,94 @@ SetupRenderer:
 
     # bind camera ubo to base 0
     PARAMS3 $GL_UNIFORM_BUFFER, $0, camera_ubo(%rip)
+    call *glBindBufferBase(%rip)
+
+    #----------------------------------------------------------------------------------------------------------
+    # Entity SSBO
+    #----------------------------------------------------------------------------------------------------------
+
+    # positions
+
+    # generate entity positions ssbo name
+    PARAMS1 $1
+    leaq entity_p_ssbo(%rip), %rdx
+    call *glGenBuffers(%rip)
+
+    # bind buffer to ssbo target (make it a ssbo)
+    PARAMS2 $GL_SHADER_STORAGE_BUFFER, entity_p_ssbo(%rip)
+    call *glBindBuffer(%rip)
+
+    # target, size in bytes, data (null for now), usage
+    movq $MAX_ENTITIES, %rax
+    shl $3, %rax                    # multiply by 8
+    PARAMS4 $GL_SHADER_STORAGE_BUFFER, %rax, $0, $GL_DYNAMIC_DRAW
+    call *glBufferData(%rip)
+
+    # bind entity positions ssbo to base 0
+    PARAMS3 $GL_SHADER_STORAGE_BUFFER, $0, entity_p_ssbo(%rip)
+    call *glBindBufferBase(%rip)
+
+    # sizes
+
+    # generate entity sizes ssbo name
+    PARAMS1 $1
+    leaq entity_s_ssbo(%rip), %rdx
+    call *glGenBuffers(%rip)
+
+    # bind buffer to ssbo target (make it a ssbo)
+    PARAMS2 $GL_SHADER_STORAGE_BUFFER, entity_s_ssbo(%rip)
+    call *glBindBuffer(%rip)
+
+    # target, size in bytes, data (null for now), usage
+    movq $MAX_ENTITIES, %rax
+    shl $2, %rax                    # multiply by 4
+    PARAMS4 $GL_SHADER_STORAGE_BUFFER, %rax, $0, $GL_DYNAMIC_DRAW
+    call *glBufferData(%rip)
+
+    # bind entity sizes ssbo to base 1
+    PARAMS3 $GL_SHADER_STORAGE_BUFFER, $1, entity_s_ssbo(%rip)
+    call *glBindBufferBase(%rip)
+
+    # heights
+
+    # generate entity heights ssbo name
+    PARAMS1 $1
+    leaq entity_h_ssbo(%rip), %rdx
+    call *glGenBuffers(%rip)
+
+    # bind buffer to ssbo target (make it a ssbo)
+    PARAMS2 $GL_SHADER_STORAGE_BUFFER, entity_h_ssbo(%rip)
+    call *glBindBuffer(%rip)
+
+    # target, size in bytes, data (null for now), usage
+    movq $MAX_ENTITIES, %rax
+    shl $2, %rax                    # multiply by 4
+    PARAMS4 $GL_SHADER_STORAGE_BUFFER, %rax, $0, $GL_DYNAMIC_DRAW
+    call *glBufferData(%rip)
+
+    # bind entity heights ssbo to base 2
+    PARAMS3 $GL_SHADER_STORAGE_BUFFER, $2, entity_h_ssbo(%rip)
+    call *glBindBufferBase(%rip)
+
+    # textures
+
+    # generate entity textures ssbo name
+    PARAMS1 $1
+    leaq entity_t_ssbo(%rip), %rdx
+    call *glGenBuffers(%rip)
+
+    # bind buffer to ssbo target (make it a ssbo)
+    PARAMS2 $GL_SHADER_STORAGE_BUFFER, entity_t_ssbo(%rip)
+    call *glBindBuffer(%rip)
+
+    # target, size in bytes, data (null for now), usage
+    movq $MAX_ENTITIES, %rax
+    shl $1, %rax                    # multiply by 2
+    PARAMS4 $GL_SHADER_STORAGE_BUFFER, %rax, $0, $GL_DYNAMIC_DRAW
+    call *glBufferData(%rip)
+
+    # bind entity textures ssbo to base 3
+    PARAMS3 $GL_SHADER_STORAGE_BUFFER, $3, entity_t_ssbo(%rip)
     call *glBindBufferBase(%rip)
 
     #----------------------------------------------------------------------------------------------------------

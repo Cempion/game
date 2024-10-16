@@ -44,7 +44,7 @@ context_attribList:
     .long 0x2091        # WGL_CONTEXT_MAJOR_VERSION_ARB
     .long 4             # Major version 3
     .long 0x2092        # WGL_CONTEXT_MINOR_VERSION_ARB
-    .long 1             # Minor version 0
+    .long 6             # Minor version 0
     .long 0             # Termination (int 0)
 
 .bss

@@ -9,16 +9,34 @@ out vec4 color;
 
 uniform vec4 fogColor = vec4(0.1, 0.05, 0, 1);
 uniform int blockHeight = 4;
-uniform float maxRayDist = 24;
+uniform float maxRayDist = 16;
 uniform float epsilon = 0.001; // corner error correction
 
-layout(std140) uniform CameraData {
+layout(std140, binding = 0) uniform CameraData {
     vec3 pos;
     float angleX;
     float angleY;
     float fov;
     float aspectRatio;
 } camera;
+
+uniform int entityCount = 0;
+
+layout(std430, binding = 0) buffer EntityP {      
+    vec2 positions[];          
+};
+
+layout(std430, binding = 1) buffer EntityS {      
+    float sizes[];          
+};
+
+layout(std430, binding = 2) buffer EntityH {      
+    float heights[];          
+};
+
+layout(std430, binding = 3) buffer EntityT {      
+    uint textures[]; // each int holds 2 shorts that represent texture data (so actual index = entity / 2)
+};
 
 uniform usampler2D mapData;
 uniform usampler2DArray pieceData;

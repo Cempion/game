@@ -10,7 +10,7 @@ clear_color:
     .float 1 # alpha
 
 camera:
-    .float 0, 1.75, 0 # position
+    .float 0, 0, 0 # position
     .float 0 # angle x
     .float 0 # angle y
     .float 0 # fov
@@ -34,13 +34,17 @@ RenderFrame:
     # update camera angles based on user input
     call DoCameraControls
     
-    # update camera position based on entity with index 0
+    # update camera position & height based on entity with index 0
     leaq entity_positions(%rip), %rcx                   # get pointer to entity positions
     movl (%rcx), %eax                                   # get x position of entity 0
     movl 4(%rcx), %edx                                  # get z position of entity 0
 
+    leaq entity_heights(%rip), %rcx                     # get pointer to entity heights
+    movl (%rcx), %r8d                                   # get height of entity 0
+
     leaq camera(%rip), %r9
     movl %eax, (%r9)                                    # move x position to x position of camera
+    movl %r8d, 4(%r9)                                   # move height to y position of camera
     movl %edx, 8(%r9)                                   # move z position to z position of camera
 
     # make sure camera ubo is bound
@@ -73,6 +77,56 @@ RenderFrame:
     SHADOW_SPACE
     call glTexSubImage2D
     add $80, %rsp                               # restore stack pointer
+
+    # update entity data
+
+    # update entity count uniform
+    PARAMS1 render_shader_program(%rip)
+    leaq entity_count_uniform(%rip), %rdx
+    call *glGetUniformLocation(%rip)
+
+    PARAMS3 render_shader_program(%rip), %rax, entity_count(%rip)
+    call *glProgramUniform1i(%rip)
+
+    # update position data
+    PARAMS2 $GL_SHADER_STORAGE_BUFFER, entity_p_ssbo(%rip)
+    call *glBindBuffer(%rip)
+
+    movq entity_count(%rip), %rax       # get entity count
+    shl $3, %rax                        # multiply by 8 for size in bytes
+    leaq entity_positions(%rip), %rsi   # pointer to data
+    PARAMS4 $GL_SHADER_STORAGE_BUFFER, $0, %rax, %rsi
+    call *glBufferSubData(%rip)
+
+    # update size data
+    PARAMS2 $GL_SHADER_STORAGE_BUFFER, entity_s_ssbo(%rip)
+    call *glBindBuffer(%rip)
+
+    movq entity_count(%rip), %rax       # get entity count
+    shl $2, %rax                        # multiply by 4 for size in bytes
+    leaq entity_sizes(%rip), %rsi       # pointer to data
+    PARAMS4 $GL_SHADER_STORAGE_BUFFER, $0, %rax, %rsi
+    call *glBufferSubData(%rip)
+
+    # update height data
+    PARAMS2 $GL_SHADER_STORAGE_BUFFER, entity_h_ssbo(%rip)
+    call *glBindBuffer(%rip)
+
+    movq entity_count(%rip), %rax       # get entity count
+    shl $2, %rax                        # multiply by 4 for size in bytes
+    leaq entity_heights(%rip), %rsi     # pointer to data
+    PARAMS4 $GL_SHADER_STORAGE_BUFFER, $0, %rax, %rsi
+    call *glBufferSubData(%rip)
+
+    # update texture data
+    PARAMS2 $GL_SHADER_STORAGE_BUFFER, entity_t_ssbo(%rip)
+    call *glBindBuffer(%rip)
+
+    movq entity_count(%rip), %rax       # get entity count
+    shl $1, %rax                        # multiply by 2 for size in bytes
+    leaq entity_textures(%rip), %rsi    # pointer to data
+    PARAMS4 $GL_SHADER_STORAGE_BUFFER, $0, %rax, %rsi
+    call *glBufferSubData(%rip)
 
     #----------------------------------------------------------------------------------------------------------
     # Render Scene
