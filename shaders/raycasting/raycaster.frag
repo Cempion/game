@@ -10,7 +10,7 @@ out vec4 color;
 uniform vec4 fogColor = vec4(0.1, 0.05, 0, 1);
 uniform int blockHeight = 4;
 uniform float maxRayDist = 24;
-uniform float epsilon = 0.001;
+uniform float epsilon = 0.001; // corner error correction
 
 layout(std140) uniform CameraData {
     vec3 pos;
@@ -57,54 +57,68 @@ uint getBlock(vec2 pos) {
 }
 
 rayHit getHitX() {
-    int dir = int(step(0, rayTarget.x)); // 0 if negative, 1 if positive
+    int dirX = int(step(0, rayTarget.x)); // 0 if negative, 1 if positive
 
     // calculate first intersection on the x axis
-    float multiplier = (1 - dir) * (fract(camera.pos.x) / -rayTarget.x) + dir * ((1 - fract(camera.pos.x)) / rayTarget.x);
+    float multiplier = (1 - dirX) * (fract(camera.pos.x) / -rayTarget.x) + dirX * ((1 - fract(camera.pos.x)) / rayTarget.x);
     vec3 rayPos = camera.pos + rayTarget * multiplier;
 
     vec3 rayStep = rayTarget / abs(rayTarget.x);
     float stepLength = length(rayStep);
 
+    // convert dirX to -1 - 1
+    dirX = int((dirX - 0.5) * 2);
+
     float totalLength = distance(camera.pos, rayPos);
     // loop while block at position is open (first bit in block data)
-    while ((((getBlock(rayPos.xz + vec2(0.5 * (dir - 0.5) * 2, epsilon)) & 1) == 0 ||
-            (getBlock(rayPos.xz + vec2(-0.5 * (dir - 0.5) * 2, epsilon)) & 1) == 1) &&
-            ((getBlock(rayPos.xz + vec2(0.5 * (dir - 0.5) * 2, -epsilon)) & 1) == 0 ||
-            (getBlock(rayPos.xz + vec2(-0.5 * (dir - 0.5) * 2, -epsilon)) & 1) == 1))
+    while ((((getBlock(rayPos.xz + vec2(0.5 * dirX, epsilon)) & 1) == 0 ||
+            (getBlock(rayPos.xz + vec2(-0.5 * dirX, epsilon)) & 1) == 1) &&
+            ((getBlock(rayPos.xz + vec2(0.5 * dirX, -epsilon)) & 1) == 0 ||
+            (getBlock(rayPos.xz + vec2(-0.5 * dirX, -epsilon)) & 1) == 1))
             && totalLength < maxRayDist) {
 
         rayPos += rayStep;
         totalLength += stepLength;
     }
 
-    uint piece = getPiece(rayPos.xz);
+    // get intersected block
+    int dirZ = int((step(0, rayTarget.z) - 0.5) * 2); // -1 - 1
+    int pieceComp = int((step(1, getBlock(rayPos.xz + vec2(0.5 * dirX, -epsilon * dirZ)) & 1) - 0.5) * 2);
+    uint piece = getPiece(rayPos.xz + vec2(0.5 * dirX, -epsilon * dirZ * pieceComp));
+
     return rayHit(distance(camera.pos, rayPos), vec4(piece, 11 - piece, piece, 1) / 11);
 }
 
 rayHit getHitZ() {
-    int dir = int(step(0, rayTarget.z)); // 0 if negative, 1 if positive
+    int dirZ = int(step(0, rayTarget.z)); // 0 if negative, 1 if positive
 
     // calculate first intersection on the Z axis
-    float multiplier = (1 - dir) * (fract(camera.pos.z) / -rayTarget.z) + dir * ((1 - fract(camera.pos.z)) / rayTarget.z);
+    float multiplier = (1 - dirZ) * (fract(camera.pos.z) / -rayTarget.z) + dirZ * ((1 - fract(camera.pos.z)) / rayTarget.z);
     vec3 rayPos = camera.pos + rayTarget * multiplier;
 
     vec3 rayStep = rayTarget / abs(rayTarget.z);
     float stepLength = length(rayStep);
 
+    // convert dirZ to -1 - 1
+    dirZ = int((dirZ - 0.5) * 2);
+
     float totalLength = distance(camera.pos, rayPos); 
     // loop while block at position is open (first bit in block data)
-    while ((((getBlock(rayPos.xz + vec2(epsilon, 0.5 * (dir - 0.5) * 2)) & 1) == 0 ||
-            (getBlock(rayPos.xz + vec2(epsilon, -0.5 * (dir - 0.5) * 2)) & 1) == 1) &&
-            ((getBlock(rayPos.xz + vec2(-epsilon, 0.5 * (dir - 0.5) * 2)) & 1) == 0 ||
-            (getBlock(rayPos.xz + vec2(-epsilon, -0.5 * (dir - 0.5) * 2)) & 1) == 1)) 
+    while ((((getBlock(rayPos.xz + vec2(epsilon, 0.5 * dirZ)) & 1) == 0 ||
+            (getBlock(rayPos.xz + vec2(epsilon, -0.5 * dirZ)) & 1) == 1) &&
+            ((getBlock(rayPos.xz + vec2(-epsilon, 0.5 * dirZ)) & 1) == 0 ||
+            (getBlock(rayPos.xz + vec2(-epsilon, -0.5 * dirZ)) & 1) == 1)) 
             && totalLength < maxRayDist) {
 
         rayPos += rayStep;
         totalLength += stepLength;
     }
 
-    uint piece = getPiece(rayPos.xz);
+    // get intersected block
+    int dirX = int((step(0, rayTarget.x) - 0.5) * 2); // -1 - 1
+    int pieceComp = int((step(1, getBlock(rayPos.xz + vec2(-epsilon * dirX, 0.5 * dirZ)) & 1) - 0.5) * 2);
+    uint piece = getPiece(rayPos.xz + vec2(-epsilon * dirX * pieceComp, 0.5 * dirZ));
+
     return rayHit(distance(camera.pos, rayPos), vec4(piece, 11 - piece, piece, 1) / 11);
 }
 
@@ -135,5 +149,5 @@ void main() {
                     hitX.color * comp1 * comp3 + hitY.color * (1 - comp1) * comp2 + hitZ.color * (1 - comp2) * (1 - comp3));
 
     float ratio = min(max(hit.dist / maxRayDist, 0), 1);
-    color = clamp(mix(hit.color, fogColor, ratio), vec4(0), vec4(1));
+    color = mix(hit.color, fogColor, ratio);
 }
