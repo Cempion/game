@@ -7,6 +7,7 @@ in vec3 rayTarget;
 
 out vec4 color;
 
+uniform vec4 fogColor = vec4(0.1, 0.05, 0, 1);
 uniform int blockHeight = 4;
 uniform float maxRayDist = 24;
 uniform float epsilon = 0.001;
@@ -133,5 +134,6 @@ void main() {
     rayHit hit = rayHit(hitX.dist * comp1 * comp3 + hitY.dist * (1 - comp1) * comp2 + hitZ.dist * (1 - comp2) * (1 - comp3), 
                     hitX.color * comp1 * comp3 + hitY.color * (1 - comp1) * comp2 + hitZ.color * (1 - comp2) * (1 - comp3));
 
-    color = clamp(mix(hit.color, vec4(0, 0, 0, 1), hit.dist / maxRayDist), vec4(0), vec4(1));
+    float ratio = min(max(hit.dist / maxRayDist, 0), 1);
+    color = clamp(mix(hit.color, fogColor, ratio), vec4(0), vec4(1));
 }

@@ -110,7 +110,7 @@ main:
             cmp %r13, %rcx                          # if time difference is less than time per frame
             jl 2b                                   # continue busy sleep
 
-        call PrintFrameRate
+        //call PrintFrameRate
 
         #----------------------------------------------------------------------------------------------------------
         # Game Loop
@@ -135,10 +135,6 @@ main:
     end:
     
     # cleanup
-
-    # revert timer resolution
-    PARAMS1 $1
-    call timeEndPeriod
 
     PARAMS1 wfc_ruleset(%rip)
     call free

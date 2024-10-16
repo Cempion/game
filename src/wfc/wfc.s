@@ -461,10 +461,10 @@ GetTileIndex:
     G_WIDTH %edi, %rcx                                      # get width of wfc
     G_HEIGHT %esi, %rcx                                     # get height of wfc
 
-    movq %rdx, %rcx                                         # since LOOP_VALUE changed rdx
+    movq %rdx, %rcx                                         # since LOOP_QUAD changed rdx
 
-    LOOP_VALUE %rcx, %rdi                                   # loop width
-    LOOP_VALUE %r8, %rsi                                    # loop height
+    LOOP_QUAD %rcx, %rdi                                   # loop width
+    LOOP_QUAD %r8, %rsi                                    # loop height
 
     movq %r8, %rax                                          # put y position in rax
     movq $0, %rdx                                           # make 0 to prepare for mult

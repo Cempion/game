@@ -35,7 +35,7 @@ entity_accelerations: .skip MAX_ENTITIES * 8
 # makes a new entity with the given parameters
 # PARAMS:
 # %xmm0 =   x, z position as 2 floats
-# %xmm1 =   size of the player (diameter of its collision circle)
+# %xmm1 =   size of the player (radius of its collision circle)
 # %r8   =   pointer to the subroutine handling the entities movement (ai)
 # RETURNS:
 # %rax =    the index of the created entity

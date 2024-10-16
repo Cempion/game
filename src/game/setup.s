@@ -1,17 +1,10 @@
 
+.include "game/map.s"
 .include "game/pieces.s"
 .include "game/entities.s"
 .include "game/physics.s"
 
-.equ WFC_WIDTH, 50
-.equ WFC_HEIGHT, 50
-.equ WFC_TILE_COUNT, WFC_WIDTH * WFC_HEIGHT
-
-.data 
-
-map_wfc: .quad 0 # the pointer to the wfc running the map
-
-map_data: .skip WFC_TILE_COUNT
+.data
 
 player_start: .float 8, 8
 

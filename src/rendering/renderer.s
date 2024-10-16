@@ -113,10 +113,6 @@ RenderFrame:
 
     # display scene to window
 
-    # enable gamma correction
-    PARAMS1 $GL_FRAMEBUFFER_SRGB
-    call glEnable
-
     # unbind framebuffer to use default
     PARAMS2 $GL_FRAMEBUFFER, $0
     call *glBindFramebuffer(%rip)
@@ -140,10 +136,6 @@ RenderFrame:
     # swap buffers
     PARAMS1 device_context(%rip)
     call SwapBuffers
-
-    # disable gamma correction
-    PARAMS1 $GL_FRAMEBUFFER_SRGB
-    call glDisable
 
     CHECK_OPENGL_ERROR
     EPILOGUE

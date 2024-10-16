@@ -178,7 +178,14 @@
     end_\@:
 .endm
 
-.macro LOOP_VALUE value, max
+.macro LOOP_LONG value, max
+    movl \value, %eax                       
+    cltq                                    # convert to quad by sign extending it
+    LOOP_QUAD %rax, \max
+    movl %eax, \value
+.endm
+
+.macro LOOP_QUAD value, max
     movq \value, %rax                       # Move the value to rax for div
     movq $0, %rdx                           # Clear rdx
     cqto                                    # Sign extend rax to rdx:rax for division
@@ -193,14 +200,11 @@
     movq %rdx, \value                       # return result
 .endm
 
-.macro MAX_FLOAT dest, value1, value2
-    movss \value1, \dest
-    ucomiss \value1, \value2
-    jl end\@
-
-    movss \value2, \dest
-
-    end\@:
+.macro LENGTH_VEC2 dest, vec2
+    movsd \vec2, \dest
+    mulps \dest, \dest          # (x^2, y^2)
+    haddps \dest, \dest         # (x^2 + y^2, y^2)
+    sqrtss \dest, \dest         # sqrt(x^2 + y^2)
 .endm
 
 .macro RANDOM dest
