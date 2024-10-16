@@ -3,8 +3,7 @@
 
 player_size: .float 0.75
 player_walk_acceleration: .float 0.01666666666666 # 1 per second
-
-temp: .float 0
+player_run_multiplier: .float 2
 
 .text
 
@@ -112,6 +111,13 @@ DoKeyControls:
 
     # calculate acceleration
     movss player_walk_acceleration(%rip), %xmm2     # get movement acceleration
+    cmpb $1, 0x10(%r12)                             # check if shift is pressed
+    jne 5f
+
+    movss player_run_multiplier(%rip), %xmm3
+    mulss %xmm3, %xmm2                              # multiply by run multiplier
+
+    5: # shift is not pressed
     shufps $0, %xmm2, %xmm2                         # make all floats the same
     mulps %xmm2, %xmm1
 
