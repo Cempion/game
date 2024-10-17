@@ -33,10 +33,10 @@ void main() {
     // rotate angleY (around the X axis)
     rayTarget = baseTarget;
     rayTarget.z = baseTarget.z * cos(camera.angleY) - baseTarget.y * sin(camera.angleY);
-    rayTarget.y = baseTarget.y * cos(camera.angleY) + baseTarget.z * sin(camera.angleY);
+    rayTarget.y = baseTarget.z * sin(camera.angleY) + baseTarget.y * cos(camera.angleY);
 
     // rotate angleX (around the Y axis)
     baseTarget = rayTarget;
     rayTarget.x = baseTarget.x * cos(camera.angleX) - baseTarget.z * sin(camera.angleX);
-    rayTarget.z = baseTarget.z * cos(camera.angleX) + baseTarget.x * sin(camera.angleX);
+    rayTarget.z = baseTarget.x * sin(camera.angleX) + baseTarget.z * cos(camera.angleX);
 }

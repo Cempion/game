@@ -1,7 +1,7 @@
 
 .include "game/entities/player.s"
 
-.equ MAX_ENTITIES, 2
+.equ MAX_ENTITIES, 5
 
 .data
 

@@ -2,7 +2,7 @@
 .data
 
 player_size: .float 0.75
-player_height: .float 1.75
+player_height: .float 2
 # half width, half height (in pixels), texture index
 player_texture: .byte 0x43, 0
 

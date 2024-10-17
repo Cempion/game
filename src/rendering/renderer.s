@@ -40,7 +40,10 @@ RenderFrame:
     movl 4(%rcx), %edx                                  # get z position of entity 0
 
     leaq entity_heights(%rip), %rcx                     # get pointer to entity heights
-    movl (%rcx), %r8d                                   # get height of entity 0
+    movd (%rcx), %xmm0                                  # get height of entity 0
+    movss f_0.5(%rip), %xmm1
+    subss %xmm1, %xmm0                                  # subtract 2 pixels for entity height for camera position
+    movd %xmm0, %r8
 
     leaq camera(%rip), %r9
     movl %eax, (%r9)                                    # move x position to x position of camera

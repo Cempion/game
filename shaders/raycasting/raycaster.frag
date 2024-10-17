@@ -147,6 +147,50 @@ rayHit getHitY() {
     return rayHit(length(rayTarget * multiplier), vec4(0, 0, 0, 1));
 }
 
+rayHit getHitEntity(int index) {
+    vec2 entityPos = positions[index];
+    vec2 camToEntity = vec2(entityPos - camera.pos.xz);
+
+    if (camToEntity.x + camToEntity.y == 0) {
+        return rayHit(maxRayDist, fogColor);
+    }
+
+    vec2 entityLine = normalize(vec2(camToEntity.y, -camToEntity.x)) * sizes[index];
+
+    // P1 + l * D1 = P2 + t * D2
+
+    // used as texture coord
+    // t = (C.x * D1.y - C.y * D1.x) / (D2.y * D1.x - D2.x * D1.y)
+    float t = (camToEntity.x * rayTarget.z - camToEntity.y * rayTarget.x) /
+                (entityLine.y * rayTarget.x - entityLine.x * rayTarget.z);
+
+    // used to calculate 3d hit point
+    // l = (C.x + t * D2.x) / D1.x
+    float l = (camToEntity.x + t * entityLine.x) / rayTarget.x;
+
+    vec3 hitPoint = camera.pos + l * rayTarget; 
+
+    vec2 textureCoord = vec2((t + 1) / 2, hitPoint.y / heights[index]);
+
+    // check if l > 0, t > 0 and texture coords are within 0 - 1, if not there is no hit
+    int isHit = int(step(epsilon, l)) *
+                int(step(0, textureCoord.x)) * int(step(textureCoord.x, 1)) * 
+                int(step(0, textureCoord.y)) * int(step(textureCoord.y, 1));
+
+    return rayHit(distance(hitPoint, camera.pos) * isHit + maxRayDist * (1 - isHit), vec4(textureCoord, 0, 1));
+}
+
+rayHit getHitEntities() {
+    rayHit closestHit = rayHit(maxRayDist, fogColor);
+    for (int i = 0; i < entityCount; i++) { // skip entity 0 since thats the player
+        rayHit hit = getHitEntity(i);
+        int hitComp = int(step(closestHit.dist, hit.dist));
+        closestHit.dist = closestHit.dist * hitComp + hit.dist * (1 - hitComp);
+        closestHit.color = closestHit.color * hitComp + hit.color * (1 - hitComp);
+    }
+    return closestHit;
+}
+
 void main() {
 
     // get hit on X axis
@@ -158,13 +202,21 @@ void main() {
     // get hit on Z axis
     rayHit hitZ = getHitZ();
 
-    // get closest color
+    // get hit on entity
+    rayHit entityHit = getHitEntities();
+
+    // get closest wall hit
     float comp1 = step(hitX.dist, hitY.dist);
     float comp2 = step(hitY.dist, hitZ.dist);
     float comp3 = step(hitX.dist, hitZ.dist);
 
     rayHit hit = rayHit(hitX.dist * comp1 * comp3 + hitY.dist * (1 - comp1) * comp2 + hitZ.dist * (1 - comp2) * (1 - comp3), 
                     hitX.color * comp1 * comp3 + hitY.color * (1 - comp1) * comp2 + hitZ.color * (1 - comp2) * (1 - comp3));
+
+    float entityComp = step(hit.dist, entityHit.dist); // 1 if entity is closer, 0 if wall is closer
+
+    hit.dist = hit.dist * entityComp + entityHit.dist * (1 - entityComp);
+    hit.color = hit.color * entityComp + entityHit.color * (1 - entityComp);
 
     float ratio = min(max(hit.dist / maxRayDist, 0), 1);
     color = mix(hit.color, fogColor, ratio);

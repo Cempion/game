@@ -7,6 +7,10 @@
 .data
 
 player_start: .float 8, 8
+test_start1: .float 9, 9
+test_start2: .float 10, 10
+test_start3: .float 7, 7
+test_start4: .float 6, 6
 
 .text
 
@@ -44,6 +48,18 @@ SetupGame:
     #----------------------------------------------------------------------------------------------------------
 
     movsd player_start(%rip), %xmm0
+    call MakePlayer
+
+    movsd test_start1(%rip), %xmm0
+    call MakePlayer
+
+    movsd test_start2(%rip), %xmm0
+    call MakePlayer
+
+    movsd test_start3(%rip), %xmm0
+    call MakePlayer
+
+    movsd test_start4(%rip), %xmm0
     call MakePlayer
 
     EPILOGUE
