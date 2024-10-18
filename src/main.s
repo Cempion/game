@@ -1,5 +1,8 @@
 .include "float.s"
 .include "macro.s"
+.include "util/list.s"
+.include "util/binary_heap.s"
+
 .include "window.s"
 
 .include "game/setup.s"
