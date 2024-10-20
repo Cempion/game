@@ -35,10 +35,12 @@ SetupGame:
     leaq WfcOnChange(%rip), %r8
     leaq piece_weights(%rip), %r9
     call CreateWfc
-
     movq %rax, map_wfc(%rip)
 
-    PARAMS1 %rax
+    PARAMS3 map_wfc(%rip), $0, $10
+    call CollapseToTile
+
+    PARAMS1 map_wfc(%rip)
     call CollapseAllTiles
 
     call PrintWfc

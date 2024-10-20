@@ -144,6 +144,15 @@ main:
     PARAMS1 map_wfc(%rip)
     call free
 
+    PARAMS1 pf_frontier(%rip)
+    call free
+    PARAMS1 pf_visited_pos(%rip)
+    call free
+    PARAMS1 pf_came_from(%rip)
+    call free
+    PARAMS1 pf_cost_so_far(%rip)
+    call free
+
     PARAMS1 opengl_context(%rip)
     call wglDeleteContext
     CHECK_RETURN_FAILURE $112

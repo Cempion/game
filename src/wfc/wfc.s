@@ -15,6 +15,7 @@
 
 .global CreateWfc
 
+.global CollapseToTile
 .global CollapseTile
 .global CollapseTiles
 .global CollapseAllTiles
@@ -300,6 +301,42 @@ CreateWfc:
 #----------------------------------------------------------------------------------------------------------
 # COMMANDS
 #----------------------------------------------------------------------------------------------------------
+
+# collapses to the given possibility at the given tile in the given wfc
+# PARAMS:
+# %rcx =    pointer to wfc
+# %rdx =    tileindex to intersect
+# r8   =    possibilities to collapse to
+# RETURNS:
+# void
+CollapseToTile:
+    PROLOGUE
+    push %r12
+    push %r13
+    movq %rcx, %r12                                         # save pointer to wfc in callee saved register
+    movq %rdx, %r13                                         # save tile index in callee saved register
+
+    movq %r8, %rcx                                          # since only rcx works with bitshifts
+    movq $1, %rax
+    shl %cl, %rax                                           # the possibilites to intersect with current possibilities
+
+    PARAMS3 %r12, %r13, %rax
+    call IntersectTilePossibilities
+
+    cmp $0, %rax                                            # if tile is unchanged skip propagation
+    je 1f
+
+    PARAMS2 %r12, %r13
+    call PropagateRemoval
+
+    1: # skip propagation
+
+    PARAMS3 %r12, %r13, $1 
+    call AddToEntList                   # since the tile must be collapsed add to entropy list at entropy 1
+
+    pop %r13
+    pop %r12
+    EPILOGUE
 
 # collapses the given tile in the given wfc
 # PARAMS:
