@@ -35,12 +35,15 @@ layout(std430, binding = 2) buffer EntityH {
 };
 
 layout(std430, binding = 3) buffer EntityT {      
-    uint textures[]; // each int holds 2 shorts that represent texture data (so actual index = entity / 2)
+    uint textureData[]; // each int holds 2 shorts that represent texture data (so actual index = entity / 2)
 };
 
 uniform usampler2D mapData;
 uniform usampler2DArray pieceData;
 uniform usampler1D blockData;
+
+uniform sampler2DArray textures;
+uniform sampler2DArray entityTextures;
 
 struct rayHit {
     float dist;
@@ -101,8 +104,8 @@ rayHit getHitX() {
 
     // get intersected block
     int dirZ = int((step(0, rayTarget.z) - 0.5) * 2); // -1 - 1
-    int pieceComp = int((step(1, getBlock(rayPos.xz + vec2(0.5 * dirX, -epsilon * dirZ)) & 1) - 0.5) * 2);
-    uint piece = getPiece(rayPos.xz + vec2(0.5 * dirX, -epsilon * dirZ * pieceComp));
+    int blockComp = int((step(1, getBlock(rayPos.xz + vec2(0.5 * dirX, -epsilon * dirZ)) & 1) - 0.5) * 2); // offset to the camera, is it air or not?
+    uint piece = getPiece(rayPos.xz + vec2(0.5 * dirX, -epsilon * dirZ * blockComp)); // if wall use that position, if air offset away from camera
 
     return rayHit(distance(camera.pos, rayPos), vec4(piece, 11 - piece, piece, 1) / 11);
 }
@@ -134,8 +137,8 @@ rayHit getHitZ() {
 
     // get intersected block
     int dirX = int((step(0, rayTarget.x) - 0.5) * 2); // -1 - 1
-    int pieceComp = int((step(1, getBlock(rayPos.xz + vec2(-epsilon * dirX, 0.5 * dirZ)) & 1) - 0.5) * 2);
-    uint piece = getPiece(rayPos.xz + vec2(-epsilon * dirX * pieceComp, 0.5 * dirZ));
+    int blockComp = int((step(1, getBlock(rayPos.xz + vec2(-epsilon * dirX, 0.5 * dirZ)) & 1) - 0.5) * 2); // offset to the camera, is it air or not?
+    uint piece = getPiece(rayPos.xz + vec2(-epsilon * dirX * blockComp, 0.5 * dirZ)); // if wall use that position, if air offset away from camera
 
     return rayHit(distance(camera.pos, rayPos), vec4(piece, 11 - piece, piece, 1) / 11);
 }

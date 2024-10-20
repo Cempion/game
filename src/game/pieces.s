@@ -153,12 +153,15 @@ piece_data: # stores the block data of each piece, used for rendering and collis
 
 
 blocks: .byte 3 # stores each block data
-    # 1 bit isWall, 5 bits wall texture, 5 bits floor texture, 5 bits ceiling texture
-    #           |    |    |
-    .word 0b0000000000000000
-    #           |    |    |
-    .word 0b0000100001000010
-    .word 0b0000100001000011
+    # 1 bit isWall
+    # wall: 15 bits wall texture
+    # air:  4 bits rotation, 1 bit reserved, 5 bits floor texture, 5 bits ceiling texture
+    #           |    |  | |
+    .word 0b0000000000000000 # ERROR
+    #           |    |  | |
+    .word 0b0000100001000000 # OPEN
+    #                     |
+    .word 0b0000000000000101 # WALL
 
 .text 
 
@@ -178,7 +181,7 @@ CalculateRuleset:
 
     # allocate ruleset
 
-    movzb piece_sockets(%rip), %rcx           # get amount of pieces
+    movzb piece_sockets(%rip), %rcx         # get amount of pieces
     shl $5, %rcx                            # multiply by 32 for 4 quads per piece
     add $1, %rcx                            # 1 byte for the amount of pieces
     SHADOW_SPACE
@@ -188,13 +191,13 @@ CalculateRuleset:
     # initialize all values to 0
 
     movq $0, %rax                           # value to set each quad too
-    movzb piece_sockets(%rip), %rcx           # get amount of pieces
+    movzb piece_sockets(%rip), %rcx         # get amount of pieces
     shl $2, %rcx                            # multiply by 4 (4 quads per piece)
     movq wfc_ruleset(%rip), %rdi            # pointer to ruleset
     add $1, %rdi                            # move pointer to after piece count byte
     rep stosq                               # fill all the quads in ruleset with 0
 
-    movzb piece_sockets(%rip), %rsi           # get amount of pieces
+    movzb piece_sockets(%rip), %rsi         # get amount of pieces
     movq wfc_ruleset(%rip), %rdx            # get pointer to wfc_ruleset
     movb %sil, (%rdx)                       # put piece count in ruleset
 

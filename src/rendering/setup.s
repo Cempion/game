@@ -41,9 +41,13 @@ scene_tex: .quad 0 # the 2d texture used to render the scene in the render fbo.
 # unit 1
 map_texture: .quad 0 # a 2d texture containing the map data
 # unit 2
-piece_texture: .quad 0 # a 3d texture containing the piece data
+piece_texture: .quad 0 # a 2d texture array containing the piece data
 # unit 3
 block_texture: .quad 0 # a 1d texture containing the block data
+# unit 4
+textures: .quad 0 # a 16x16 2d texture array containing the wall, floor and ceiling textures
+# unit 5
+textures_entities: .quad 0 # a 32x32 2d texture array containing the entity textures
 
 # 8 spaces to make space for a quad
 raycaster_vert_shader:  .asciz "        shaders\\raycasting\\raycaster.vert"
@@ -62,6 +66,9 @@ entity_count_uniform: .asciz "entityCount"
 map_uniform: .asciz "mapData"
 piece_uniform: .asciz "pieceData"
 block_uniform: .asciz "blockData"
+
+textures_uniform: .asciz "textures"
+textures_entities_uniform: .asciz "entityTextures"
 
 read_mode: .asciz "rb" # mode to use when reading shader code, rd = read binary
 
@@ -133,6 +140,22 @@ SetupRenderer:
     call *glGetUniformLocation(%rip)
 
     PARAMS3 render_shader_program(%rip), %rax, $3
+    call *glProgramUniform1i(%rip)
+
+    # bind textures uniform to texture unit 4
+    PARAMS1 render_shader_program(%rip)
+    leaq textures_uniform(%rip), %rdx
+    call *glGetUniformLocation(%rip)
+
+    PARAMS3 render_shader_program(%rip), %rax, $4
+    call *glProgramUniform1i(%rip)
+
+    # bind entity textures uniform to texture unit 5
+    PARAMS1 render_shader_program(%rip)
+    leaq textures_entities_uniform(%rip), %rdx
+    call *glGetUniformLocation(%rip)
+
+    PARAMS3 render_shader_program(%rip), %rax, $5
     call *glProgramUniform1i(%rip)
 
     # make display shaders & program
@@ -315,6 +338,70 @@ SetupRenderer:
     SHADOW_SPACE
     call glTexImage1D
     add $64, %rsp                           # restore stack pointer
+
+    #----------------------------------------------------------------------------------------------------------
+    # Textures
+    #----------------------------------------------------------------------------------------------------------
+
+    # wall, floor and ceiling textures
+
+    # make texture name
+    PARAMS1 $1
+    leaq textures(%rip), %rdx
+    call glGenTextures
+
+    # bind texture
+    PARAMS1 $GL_TEXTURE4
+    call *glActiveTexture(%rip)
+    PARAMS2 $GL_TEXTURE_2D_ARRAY, textures(%rip)
+    call glBindTexture
+
+    # set texture parameters
+    PARAMS3 $GL_TEXTURE_2D_ARRAY, $GL_TEXTURE_MIN_FILTER, $GL_NEAREST
+    call glTexParameteri
+    PARAMS3 $GL_TEXTURE_2D_ARRAY, $GL_TEXTURE_MAG_FILTER, $GL_NEAREST
+    call glTexParameteri
+
+    PARAMS3 $GL_TEXTURE_2D_ARRAY, $GL_TEXTURE_WRAP_S, $GL_REPEAT
+    call glTexParameteri
+    PARAMS3 $GL_TEXTURE_2D_ARRAY, $GL_TEXTURE_WRAP_T, $GL_REPEAT
+    call glTexParameteri
+
+    # target, level, internal_format, width, height, depth, border, external_format, type, data (uninitialized)
+    PARAMS10 $GL_TEXTURE_2D_ARRAY, $0, $GL_RGBA8, $16, $16, $3, $0, $GL_RGBA, $GL_UNSIGNED_BYTE, $0
+    SHADOW_SPACE
+    call *glTexImage3D(%rip)
+    add $80, %rsp                           # restore stack pointer
+
+    # entity textures
+
+    # make texture name
+    PARAMS1 $1
+    leaq textures_entities(%rip), %rdx
+    call glGenTextures
+
+    # bind texture
+    PARAMS1 $GL_TEXTURE5
+    call *glActiveTexture(%rip)
+    PARAMS2 $GL_TEXTURE_2D_ARRAY, textures_entities(%rip)
+    call glBindTexture
+
+    # set texture parameters
+    PARAMS3 $GL_TEXTURE_2D_ARRAY, $GL_TEXTURE_MIN_FILTER, $GL_NEAREST
+    call glTexParameteri
+    PARAMS3 $GL_TEXTURE_2D_ARRAY, $GL_TEXTURE_MAG_FILTER, $GL_NEAREST
+    call glTexParameteri
+
+    PARAMS3 $GL_TEXTURE_2D_ARRAY, $GL_TEXTURE_WRAP_S, $GL_REPEAT
+    call glTexParameteri
+    PARAMS3 $GL_TEXTURE_2D_ARRAY, $GL_TEXTURE_WRAP_T, $GL_REPEAT
+    call glTexParameteri
+
+    # target, level, internal_format, width, height, depth, border, external_format, type, data (uninitialized)
+    PARAMS10 $GL_TEXTURE_2D_ARRAY, $0, $GL_RGBA8, $32, $32, $3, $0, $GL_RGBA, $GL_UNSIGNED_BYTE, $0
+    SHADOW_SPACE
+    call *glTexImage3D(%rip)
+    add $80, %rsp                           # restore stack pointer
 
     #----------------------------------------------------------------------------------------------------------
     # Camera UBO
