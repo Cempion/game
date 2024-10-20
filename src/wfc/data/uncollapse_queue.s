@@ -12,23 +12,21 @@
 DeqUncollQueue:
     PROLOGUE
 
-    GP_UNCOLL_QUEUE %rdx, %rcx                                  # get pointer to collapse queue
+    GP_UNCOLL_QUEUE %r9, %rcx                               # get pointer to uncollapse queue
 
-    movl 4(%rdx), %eax                                          # get read index
-    cmpl %eax, 8(%rdx)                                          # if the read and write indexes are the same the queue is empty
+    movl 4(%r9), %r8d                                       # get read index
+    cmpl %r8d, 8(%r9)                                       # if the read and write indexes are the same the queue is empty
     je 2f
 
-    DEQ_QUEUE %eax , %rdx
-    
-    GP_UNCOLL_QUEUE_INF %rdx, %rcx                              # get pointer to collapse queue info
-    S_IN_UNCOLL_QUEUE $0, %rax, %rdx                            # clear collapse queue info
+    DEQ_QUEUE %ecx , %r9
+    movq %rcx, %rax                                         # put result in rax
 
     jmp 1f
     
-    2:
-    movq $-1, %rax                                              # return -1 since empty
+    2:  # queue empty
+    movq $-1, %rax                                          # return -1 since empty
 
-    1:
+    1:  # end
     EPILOGUE
 
 # adds a tile to the back of the uncollapse queue and updates uncollapse queue info
@@ -40,14 +38,15 @@ DeqUncollQueue:
 EnqUncollQueue:
     PROLOGUE
 
-    GP_UNCOLL_QUEUE_INF %r9, %rcx                           # get pointer to collapse queue info
-    IS_NOT_IN_UNCOLL_QUEUE %rdx, %r9                        # if in collapse queue skip adding it again
+    movq %rdx, %rsi                                         # move tileIndex to a register that ENQ_QUEUE wont touch
+
+    GP_UNCOLL_QUEUE_INF %rdi, %rcx                          # get pointer to collapse queue info
+    IS_NOT_IN_COLL_QUEUE %rsi, %rdi                         # if in uncollapse queue info skip adding it again
     jne 1f
 
-    GP_UNCOLL_QUEUE %r9, %rcx                               # get pointer to collapse queue info
-    ENQ_QUEUE %edx, %r9
-
-    S_SIDE_TO_SKIP $1, %rdx, %r9                            # set to is in uncollapse queue
+    GP_COLL_QUEUE %r9, %rcx                                 # get pointer to collapse queue info
+    ENQ_QUEUE %esi, %r9
+    S_IN_UNCOLL_QUEUE $1, %rsi, %rdi                        # set uncollapse queue info to true (1)
     
     1:
     EPILOGUE

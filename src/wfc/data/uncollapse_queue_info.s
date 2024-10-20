@@ -11,7 +11,7 @@
 
 # set if in uncollapse queue or not.
 .macro S_IN_UNCOLL_QUEUE inUncollapseQueue, tileIndex, dataPointer
-    movb \inUncollapseQueue, 4(\dataPointer, \tileIndex, 1) # set side to skip for the given tile
+    movb \inUncollapseQueue, 4(\dataPointer, \tileIndex, 1) # set if uncollapsed or not
 .endm
 
 # regen uncollapse queue info | should all be 0 (false)
