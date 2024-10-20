@@ -6,7 +6,7 @@ player_height: .float 2
 # half width, half height (in pixels), texture index
 player_texture: .byte 0x43, 0
 
-player_walk_acceleration: .float 0.01
+player_walk_acceleration: .float 0.005
 player_run_multiplier: .float 3
 
 .text

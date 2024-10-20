@@ -195,18 +195,40 @@ RemoveFromList:
     je 1f                           # exit subroutine
 
     pop %rcx                        # restore pointer
-    movl 4(%rcx), %edx              # get element count
-    decq %rdx                       # index to last element
+    movq %rax, %rdx                 # index to remove
+    call RemoveIndexFromList
+
+    1: # exit
+    EPILOGUE
+
+# removes the element at the given index from the given list. removes elements by moving 
+# the last element to the index to remove and removing the last element.
+# PARAMS:
+# %rcx =    pointer to the list to remove the given index from
+# %rdx =    the index of the element to remove (should be within 0 - element_count!)
+# RETURNS:
+# void
+RemoveIndexFromList:
+    PROLOGUE
+
+    # get last index
+    movl 4(%rcx), %r8d              # get element count
+    decq %r8                        # index to last element
 
     # move last element to index to remove
-    movq 8(%rcx, %rdx, 8), %r8
-    movq %r8, 8(%rcx, %rax, 8)
+    movq 8(%rcx, %r8, 8), %r8
+    movq %r8, 8(%rcx, %rdx, 8)
 
     # remove last index
     decl 4(%rcx)                    # decrement the element count
 
     1: # exit
     EPILOGUE
+
+# gets the element count of the given list
+.macro GET_SIZE_LIST pointer, dest
+    movl 4(\pointer), \dest
+.endm
 
 # gets the element at the given index
 .macro GET_LIST pointer, index, dest
@@ -216,6 +238,11 @@ RemoveFromList:
 # sets the element at the given index
 .macro SET_LIST pointer, index, value
     movq \value, 8(\pointer, \index, 8)
+.endm
+
+# removes the last element of the given list
+.macro REMOVE_LAST_LIST pointer
+    decl 4(\pointer)
 .endm
 
 # clears the given list of all elements, resulting in an element count of 0

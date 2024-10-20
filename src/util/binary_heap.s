@@ -1,54 +1,6 @@
 
 .text
 
-# get the element count of the given binary heap
-.macro GET_BH_SIZE pointer, dest
-    movl 4(\pointer), \dest
-.endm
-
-# get the priority at the given index
-.macro GET_BH_PRIORITY pointer, index, dest
-    movq 16(\pointer, \index, 8), \dest
-.endm
-
-# get the data at the given index
-.macro GET_BH_DATA pointer, index, dest
-    movq 8(\pointer), \dest
-    movq (\dest, \index, 8), \dest
-.endm
-
-# set the priority at the given index
-.macro SET_BH_PRIORITY pointer, index, value
-    movq \value, 16(\pointer, \index, 8)
-.endm
-
-# set the data at the given index
-.macro SET_BH_DATA pointer, index, value, temp
-    movq 8(\pointer), \temp
-    movq \value, (\temp, \index, 8)
-.endm
-
-# get the index of the left child node at the given index (2 * i + 1)
-.macro GET_BH_LEFT_INDEX index, dest
-    mov \index, \dest
-    shl $1, \dest               # multiply by 2
-    inc \dest
-.endm
-
-# get the index of the right child node at the given index (2 * i + 2)
-.macro GET_BH_RIGHT_INDEX index, dest
-    mov \index, \dest
-    shl $1, \dest               # multiply by 2
-    add $2, \dest
-.endm
-
-# get the index of the parent node at the given index ((i - 1) / 2)
-.macro GET_BH_PARENT_INDEX index, dest
-    mov \index, \dest
-    dec \dest
-    shr $1, \dest               # divide by 2
-.endm
-
 #----------------------------------------------------------------------------------------------------------
 # Binary Heap
 #----------------------------------------------------------------------------------------------------------
@@ -228,6 +180,54 @@ ShrinkBinaryHeap:
     movq -16(%rbp), %r13
     EPILOGUE
 
+# get the element count of the given binary heap
+.macro GET_SIZE_BH pointer, dest
+    movl 4(\pointer), \dest
+.endm
+
+# get the priority at the given index
+.macro GET_PRIORITY_BH pointer, index, dest
+    movq 16(\pointer, \index, 8), \dest
+.endm
+
+# get the data at the given index
+.macro GET_DATA_BH pointer, index, dest
+    movq 8(\pointer), \dest
+    movq (\dest, \index, 8), \dest
+.endm
+
+# set the priority at the given index
+.macro SET_PRIORITY_BH pointer, index, value
+    movq \value, 16(\pointer, \index, 8)
+.endm
+
+# set the data at the given index
+.macro SET_DATA_BH pointer, index, value, temp
+    movq 8(\pointer), \temp
+    movq \value, (\temp, \index, 8)
+.endm
+
+# get the index of the left child node at the given index (2 * i + 1)
+.macro GET_LEFT_INDEX_BH index, dest
+    mov \index, \dest
+    shl $1, \dest               # multiply by 2
+    inc \dest
+.endm
+
+# get the index of the right child node at the given index (2 * i + 2)
+.macro GET_RIGHT_INDEX_BH index, dest
+    mov \index, \dest
+    shl $1, \dest               # multiply by 2
+    add $2, \dest
+.endm
+
+# get the index of the parent node at the given index ((i - 1) / 2)
+.macro GET_PARENT_INDEX_BH index, dest
+    mov \index, \dest
+    dec \dest
+    shr $1, \dest               # divide by 2
+.endm
+
 # inserts the given element in the given binary heap with the given priority. always returns a pointer 
 # to the binary heap in case its grown, in which case a pointer to the new binary heap is returned 
 # and the old pointer is freed.
@@ -288,17 +288,17 @@ ExtractFromBinaryHeap:
     push %r12
 
     movq $0, %rdx
-    GET_BH_DATA %rcx, %rdx, %r12            # get the data to return
+    GET_DATA_BH %rcx, %rdx, %r12            # get the data to return
 
     # set root to last element
     movl 4(%rcx), %r8d                      # element count
     decq %r8                                # index of last element
 
-    GET_BH_PRIORITY %rcx, %r8, %r9          # get last priority
-    SET_BH_PRIORITY %rcx, %rdx, %r9         # set root node to last priority
+    GET_PRIORITY_BH %rcx, %r8, %r9          # get last priority
+    SET_PRIORITY_BH %rcx, %rdx, %r9         # set root node to last priority
 
-    GET_BH_DATA %rcx, %r8, %r9              # get last data
-    SET_BH_DATA %rcx, %rdx, %r9, %r10       # set root node to last data
+    GET_DATA_BH %rcx, %r8, %r9              # get last data
+    SET_DATA_BH %rcx, %rdx, %r9, %r10       # set root node to last data
 
     # remove last index
     decl 4(%rcx)                            # decrement the element count
@@ -324,9 +324,9 @@ BubbleUp:
     cmpq $0, %rdx                           # if at root
     je 1f                                   # do nothing
 
-    GET_BH_PARENT_INDEX %rdx, %r8
-    GET_BH_PRIORITY %rcx, %rdx, %r9         # child priority
-    GET_BH_PRIORITY %rcx, %r8, %r10         # parent priority
+    GET_PARENT_INDEX_BH %rdx, %r8
+    GET_PRIORITY_BH %rcx, %rdx, %r9         # child priority
+    GET_PRIORITY_BH %rcx, %r8, %r10         # parent priority
 
     cmpq %r10, %r9                          # if child priority is greater or equal to that of parent
     jge 1f                                  # do nothing
@@ -334,15 +334,15 @@ BubbleUp:
     # swap nodes around
 
     # swap priority
-    SET_BH_PRIORITY %rcx, %rdx, %r10        # set child node to parent priority
-    SET_BH_PRIORITY %rcx, %r8, %r9          # set parent node to child priority
+    SET_PRIORITY_BH %rcx, %rdx, %r10        # set child node to parent priority
+    SET_PRIORITY_BH %rcx, %r8, %r9          # set parent node to child priority
 
     # swap data
-    GET_BH_DATA %rcx, %rdx, %r9             # child data
-    GET_BH_DATA %rcx, %r8, %r10             # parent data
+    GET_DATA_BH %rcx, %rdx, %r9             # child data
+    GET_DATA_BH %rcx, %r8, %r10             # parent data
 
-    SET_BH_DATA %rcx, %rdx, %r10, %r11      # set child node to parent priority
-    SET_BH_DATA %rcx, %r8, %r9, %r11        # set parent node to child priority
+    SET_DATA_BH %rcx, %rdx, %r10, %r11      # set child node to parent priority
+    SET_DATA_BH %rcx, %r8, %r9, %r11        # set parent node to child priority
 
     PARAMS2 %rcx, %r8
     call BubbleUp
@@ -366,16 +366,16 @@ BubbleDown:
     jge 1f                                  # do nothing
 
     # get smallest child index
-    GET_BH_LEFT_INDEX %rdx, %r8             # left child index
-    GET_BH_PRIORITY %rcx, %r8, %r9          # left child priority
-    GET_BH_RIGHT_INDEX %rdx, %r10           # right child index
-    GET_BH_PRIORITY %rcx, %r10, %r11        # right child priority
+    GET_LEFT_INDEX_BH %rdx, %r8             # left child index
+    GET_PRIORITY_BH %rcx, %r8, %r9          # left child priority
+    GET_RIGHT_INDEX_BH %rdx, %r10           # right child index
+    GET_PRIORITY_BH %rcx, %r10, %r11        # right child priority
 
     cmpq %r9, %r11                          # if right priority is smaller than left priority
     cmovl %r10, %r8                         # move right index to r8
 
-    GET_BH_PRIORITY %rcx, %rdx, %r9         # parent priority
-    GET_BH_PRIORITY %rcx, %r8, %r10         # smallest child priority
+    GET_PRIORITY_BH %rcx, %rdx, %r9         # parent priority
+    GET_PRIORITY_BH %rcx, %r8, %r10         # smallest child priority
 
     cmpq %r9, %r10                          # if child priority is greater or equal to that of parent
     jge 1f                                  # do nothing
@@ -383,18 +383,54 @@ BubbleDown:
     # swap nodes around
 
     # swap priority
-    SET_BH_PRIORITY %rcx, %rdx, %r10        # set parent node to child priority
-    SET_BH_PRIORITY %rcx, %r8, %r9          # set child node to parent priority
+    SET_PRIORITY_BH %rcx, %rdx, %r10        # set parent node to child priority
+    SET_PRIORITY_BH %rcx, %r8, %r9          # set child node to parent priority
 
     # swap data
-    GET_BH_DATA %rcx, %rdx, %r9             # parent data
-    GET_BH_DATA %rcx, %r8, %r10             # child data
+    GET_DATA_BH %rcx, %rdx, %r9             # parent data
+    GET_DATA_BH %rcx, %r8, %r10             # child data
 
-    SET_BH_DATA %rcx, %rdx, %r10, %r11      # set parent node to child data
-    SET_BH_DATA %rcx, %r8, %r9, %r11        # set child node to parent data
+    SET_DATA_BH %rcx, %rdx, %r10, %r11      # set parent node to child data
+    SET_DATA_BH %rcx, %r8, %r9, %r11        # set child node to parent data
 
     PARAMS2 %rcx, %r8
     call BubbleDown
 
     1: # do nothing
     EPILOGUE
+
+# gets the index of the first occurence of the given element in the given binary heap
+# PARAMS:
+# %rcx =    pointer to the list to search in
+# %rdx =    the element to get the index of
+# RETURNS:
+# %rax =    the found index, or -1 if not found
+IndexOfBinaryHeap:
+    PROLOGUE
+
+    movl 4(%rcx), %r8d              # get element count          
+
+    movq %rdx, %rax                 # element to get the index of
+    movq 8(%rcx), %rdi              # pointer to the data tree to loop over
+    movq %r8, %rcx                  # get element count
+    repne scasq
+
+    jnz 1f                          # if not found return invalid answer
+
+    sub %rcx, %r8                   # get index with element_count - rcx
+    decq %r8
+    movq %r8, %rax                  # return index
+
+    jmp 2f
+
+    1: # invalid answer
+    movq $-1, %rax                  # return error value
+
+    2: # exit
+    EPILOGUE
+
+
+# clears the given binary heap of all elements, resulting in an element count of 0
+.macro CLEAR_BH pointer
+    movl $0, 4(\pointer)            # make element count 0 ;)
+.endm

@@ -44,6 +44,12 @@ SetupGame:
     call PrintWfc
 
     #----------------------------------------------------------------------------------------------------------
+    # Setup pathfinding
+    #----------------------------------------------------------------------------------------------------------
+
+    call SetupPathFinding
+
+    #----------------------------------------------------------------------------------------------------------
     # Setup entities
     #----------------------------------------------------------------------------------------------------------
 
@@ -51,15 +57,6 @@ SetupGame:
     call MakePlayer
 
     movsd test_start1(%rip), %xmm0
-    call MakePlayer
-
-    movsd test_start2(%rip), %xmm0
-    call MakePlayer
-
-    movsd test_start3(%rip), %xmm0
-    call MakePlayer
-
-    movsd test_start4(%rip), %xmm0
-    call MakePlayer
+    call MakeMonster
 
     EPILOGUE

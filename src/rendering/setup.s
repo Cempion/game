@@ -1,6 +1,6 @@
 # how many pixels to render (rays to cast)
 .equ RENDER_WIDTH, 256 #256
-.equ RENDER_HEIGHT, 244 #144
+.equ RENDER_HEIGHT, 288 #288
 
 # used to calculate the ratio between width and height for the view, decides which direction 
 # the rays are cast and the final size of the view on the screen

@@ -1,5 +1,7 @@
 
+.include "game/pathfinding.s"
 .include "game/entities/player.s"
+.include "game/entities/monster.s"
 
 .equ MAX_ENTITIES, 5
 
@@ -33,6 +35,9 @@ entity_ai_pointers: .skip MAX_ENTITIES * 8
 # %rcx =    index of the entity this is run for
 # RETURNS:
 # void
+
+# quad, list of pointers to lists that contain a path the ai may use.
+entity_ai_paths: .skip MAX_ENTITIES * 8
 
 .text
 

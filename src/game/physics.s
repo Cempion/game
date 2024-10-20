@@ -1,7 +1,7 @@
 
 .data
 
-drag: .float 0.2
+drag: .float 0.1
 
 .text
 
@@ -148,8 +148,8 @@ DoWallCollision:
     # convert bounding box to integers
 
     # floor the floats for correct tile position
-    roundps $9, %xmm0, %xmm0
-    roundps $9, %xmm1, %xmm1
+    roundps $1, %xmm0, %xmm0
+    roundps $1, %xmm1, %xmm1
 
     # convert to int
     cvttps2dq %xmm0, %xmm0
@@ -290,7 +290,7 @@ DoEdgeCollision:
 
     # calculate block position of entity
     movsd %xmm0, %xmm2
-    roundps $9, %xmm2, %xmm2            # floor
+    roundps $1, %xmm2, %xmm2            # floor
     cvttps2dq %xmm2, %xmm2              # convert to packed ints
     movd %xmm2, %r12                    # move to normal register
 
@@ -306,8 +306,8 @@ DoEdgeCollision:
     # convert bounding box to integers
 
     # floor the floats for correct tile position
-    roundps $9, %xmm3, %xmm3
-    roundps $9, %xmm4, %xmm4
+    roundps $1, %xmm3, %xmm3
+    roundps $1, %xmm4, %xmm4
 
     # convert to int
     cvttps2dq %xmm3, %xmm3
