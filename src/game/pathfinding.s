@@ -57,7 +57,7 @@ CalculatePath:
     push %r14
     push %r15
     push %rbx
-    push %r9                                # save pointer to the list to return path in to stack
+    sub $8, %rsp
 
     # get width of path
     roundss $2, %xmm2, %xmm2                # ceil the width
@@ -71,22 +71,30 @@ CalculatePath:
     mulps %xmm3, %xmm2                      # (path_width - 1) * 0.5
     shufps $0, %xmm2, %xmm2                 # fill entire register
 
-    # convert destination position to node position
-    addps %xmm2, %xmm1                      # pos + (path_width - 1) * 0.5
-    roundps $1, %xmm1, %xmm1                # floor the floats for correct tile position
-    cvttps2dq %xmm1, %xmm1                  # convert to int
-    movd %xmm1, %r12                        # move to int register
-
-    # add starting tile to visited tiles
+    # save destination position as node position
+    movaps %xmm1, %xmm3
+    addps %xmm2, %xmm3                      # pos + (path_width - 1) * 0.5
+    roundps $1, %xmm3, %xmm3                # floor the floats for correct tile position
+    cvttps2dq %xmm3, %xmm3                  # convert to int
+    movd %xmm3, %r12                        # move to int register
 
     # convert starting position to node position
     addps %xmm2, %xmm0                      # add path size offset
     roundps $1, %xmm0, %xmm0                # floor the floats for correct tile position
     cvttps2dq %xmm0, %xmm0                  # convert to int
-    movd %xmm0, %rdx                        # move to int register
+    movd %xmm0, %r14                        # move to int register
+
+    # add starting tile to visited tiles
+
+    # add destination to the start of the path
+    CLEAR_LIST %r9
+    movd %xmm1, %r10
+    PARAMS2 %r9, %r10
+    call AddToList
+    movq %rax, (%rsp)                       # save on the stack
 
     # position
-    PARAMS2 pf_visited_pos(%rip), %rdx
+    PARAMS2 pf_visited_pos(%rip), %r14
     call AddToList
     movq %rax, pf_visited_pos(%rip)         # in case array grew
 
@@ -158,38 +166,11 @@ CalculatePath:
     # r13 = width of the path in blocks
 
     pop %r14
-    CLEAR_LIST %r14                         # clear list to add a new path
 
     movq pf_visited_pos(%rip), %r15         # get pointer to node positions
 
-    # get float position of node
-
-    # convert integer position to floats
-    GET_LIST %r15, %rbx, %rcx               # get node position
-    movd %rcx, %xmm0
-    cvtdq2ps %xmm0, %xmm0                   # convert to floats
-
-    # go to center of block
-    movss f_0.5(%rip), %xmm1                # get 0.5
-    shufps $0, %xmm1, %xmm1                 # fill register with 0.5
-    addps %xmm1, %xmm0                      # add 0.5 to pos
-
-    # correct for path width
-    movq %r13, %rcx                         # get path width
-    decq %rcx                               # path width - 1
-    cvtsi2ss %rcx, %xmm2                    # turn into float
-    shufps $0, %xmm2, %xmm2                 # fill entire register
-    mulps %xmm2, %xmm1                      # (path_width - 1) * 0.5
-    subps %xmm1, %xmm0                      # pos - (path_width - 1) * 0.5
-    movd %xmm0, %r10
-
-    # add destination to path
-    PARAMS2 %r14, %r10
-    call AddToList
-    movq %rax, %r14
-
-    cmp $0, %rbx                        # if at starting node
-    je 6f                               # skip loop
+    cmp $0, %rbx                            # if at starting node
+    je 6f                                   # skip loop
 
     5: # path reconstruct loop
 
@@ -410,7 +391,7 @@ IsNodeValid:
 
     # move node position to 2 registers
     movl %ecx, %r12d            # x pos
-    shl $32, %rcx               
+    shr $32, %rcx               
     movq %rcx, %r13             # z pos
 
     # get minimum position (exclusive) of the grid to check
@@ -434,8 +415,8 @@ IsNodeValid:
             PARAMS2 %r12, %rbx
             call GetBlockData
             andq $1, %rax           # zero out all exept first bit
-            cmp $1, %rax            # if first bit is 1 (wall)
-            je 2f                   # return 0 (false)
+            cmpq $1, %rax           # if first bit is 1 (wall)
+            je 5f                   # return 0 (false)
 
             decq %rbx               # decrement counter
             jmp 3b

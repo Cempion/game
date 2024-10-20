@@ -59,4 +59,10 @@ SetupGame:
     movsd test_start1(%rip), %xmm0
     call MakeMonster
 
+    movsd test_start2(%rip), %xmm0
+    call MakeMonster
+
+    movsd test_start3(%rip), %xmm0
+    call MakeMonster
+
     EPILOGUE
