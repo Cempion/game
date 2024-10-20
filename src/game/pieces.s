@@ -13,6 +13,10 @@
 
 .data
 
+socket_connections: # represents to which socket the socket of that index can connect to, keep it symmetric or the wfc will break!!!
+            .byte PATH
+            .byte WALL
+
 piece_sockets: .byte 11 # used to calculate the wfc ruleset
             .byte WALL, WALL, WALL, WALL
 
@@ -210,6 +214,8 @@ CalculateRuleset:
             dec %rdx                            # decrease counter
 
             GETSOCKET %r9, %rsi, %rdx, %r10     # get socket of current piece at the current side and put in r9
+            leaq socket_connections(%rip), %rcx
+            movzb (%rcx, %r9), %r9              # get socket the current socket can connect to
             
             movzb piece_sockets(%rip), %r8        # use as piece counter
             5: # loop over every piece (again)
