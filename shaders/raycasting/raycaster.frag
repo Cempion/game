@@ -151,7 +151,7 @@ rayHit getHitEntity(int index) {
     vec2 entityPos = positions[index];
     vec2 camToEntity = vec2(entityPos - camera.pos.xz);
 
-    if (camToEntity.x + camToEntity.y == 0) {
+    if (camToEntity.x == 0 && camToEntity.y == 0) {
         return rayHit(maxRayDist, fogColor);
     }
 
@@ -173,7 +173,7 @@ rayHit getHitEntity(int index) {
     vec2 textureCoord = vec2((t + 1) / 2, hitPoint.y / heights[index]);
 
     // check if l > 0, t > 0 and texture coords are within 0 - 1, if not there is no hit
-    int isHit = int(step(epsilon, l)) *
+    int isHit = int(step(0, l)) *
                 int(step(0, textureCoord.x)) * int(step(textureCoord.x, 1)) * 
                 int(step(0, textureCoord.y)) * int(step(textureCoord.y, 1));
 

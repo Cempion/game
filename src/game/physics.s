@@ -2,6 +2,7 @@
 .data
 
 drag: .float 0.1
+entity_push: .float 0.01
 
 .text
 
@@ -34,6 +35,11 @@ SimulateFrame:
 # void
 SimulateEntity:
     PROLOGUE
+    sub $8, %rsp
+    push %r12
+    movq %rcx, %r12                             # save entity index in callee saved register
+
+    call DoEntityCollision
 
     # get pointers
     leaq entity_positions(%rip), %r9
@@ -41,11 +47,11 @@ SimulateEntity:
     leaq entity_accelerations(%rip), %r11
 
     # get position
-    movsd (%r9, %rcx, 8), %xmm0
+    movsd (%r9, %r12, 8), %xmm0
     # get velocity
-    movsd (%r10, %rcx, 8), %xmm1
+    movsd (%r10, %r12, 8), %xmm1
     # get acceleration
-    movsd (%r11, %rcx, 8), %xmm2
+    movsd (%r11, %r12, 8), %xmm2
 
     # formula to calculate acceleration 
     # a - c * v, c, 0
@@ -80,7 +86,7 @@ SimulateEntity:
     addps %xmm3, %xmm0
 
     # set new position
-    movsd %xmm0, (%r9, %rcx, 8)
+    movsd %xmm0, (%r9, %r12, 8)
 
     # formula to calculate new velocity
     # a + v
@@ -89,17 +95,19 @@ SimulateEntity:
     addps %xmm2, %xmm1
 
     # set new velocity
-    movsd %xmm1, (%r10, %rcx, 8)
+    movsd %xmm1, (%r10, %r12, 8)
 
     # make acceleration 0
     xorps %xmm2, %xmm2
-    movsd %xmm2, (%r11, %rcx, 8)
+    movsd %xmm2, (%r11, %r12, 8)
 
+    PARAMS1 %r12
     call DoWallCollision
 
+    pop %r12
     EPILOGUE
 
-# do wall collision and update position and velocity
+# do wall collision and update position
 # PARAMS:
 # %rcx  =   entity index of the entity to do wall collisions for
 # RETURNS:
@@ -603,4 +611,70 @@ DoEdgeCollision:
     movaps -48(%rbp), %xmm8
     EPILOGUE
 
-test: .asciz "Displacement: %d , %d | Count: %ld \n"
+# do entity collision by updating acceleration
+# PARAMS:
+# %rcx  =   entity index of the entity to do entity collisions for
+# RETURNS:
+# void
+DoEntityCollision:
+    PROLOGUE
+
+    # get pointers
+    leaq entity_positions(%rip), %rsi
+    leaq entity_accelerations(%rip), %rdi
+    leaq entity_sizes(%rip), %r11
+
+    movups (%rsi, %rcx, 8), %xmm1       # get position
+    movups (%rdi, %rcx, 8), %xmm0       # get acceleration
+    movss (%r11, %rcx, 4), %xmm2        # get size
+
+    # loop over all entities
+
+    movq entity_count(%rip), %r10           # get entity count and use as counter
+    1: # entity loop
+        cmpq $0, %r10                       # if counter is 0
+        je 2f                               # exit loop
+        decq %r10                           # decrement counter
+
+        cmp %rcx, %r10                      # if the same entity
+        je 1b                               # continue and do nothing
+
+        movups (%rsi, %r10, 8), %xmm3       # get other position
+
+        # get distance
+
+        subps %xmm1, %xmm3                  # get vector from other entity to this entity
+        LENGTH_VEC2 %xmm4, %xmm3            # get distance
+
+        xorps %xmm5, %xmm5                  # make 0
+        ucomiss %xmm5, %xmm4                # if distance is 0
+        je 1b                               # continue the loop
+
+        # normalize vector from other entity to this entity
+        shufps $0, %xmm4, %xmm4
+        divps %xmm4, %xmm3
+
+        # get collision distance
+        movss (%r11, %r10, 4), %xmm5        # get other size
+
+        subss %xmm2, %xmm4                  # subtract this entity size
+        subss %xmm5, %xmm4                  # subtract other entity size
+
+        xorps %xmm5, %xmm5                  # make 0
+        minss %xmm5, %xmm4                  # if collision distance is more or equal to 0
+
+        # get acceleration
+        movss entity_push(%rip), %xmm5      # get push multiplier
+        mulss %xmm5, %xmm4                  # multiply acceleration
+        shufps $0, %xmm4, %xmm4             # put value in entire register
+        mulps %xmm4, %xmm3                  # acceleration to apply
+
+        # apply acceleration
+        addps %xmm3, %xmm0
+
+        jmp 1b
+    2: # exit loop
+
+    movups %xmm0, (%rdi, %rcx, 8)       # put in resulting acceleration
+
+    EPILOGUE
