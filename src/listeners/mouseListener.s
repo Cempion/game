@@ -3,9 +3,6 @@
 .equ RIGHT_BUTTON, 1
 .equ MIDDLE_BUTTON, 2
 
-lbuttondown: .asciz "Left button pressed!"
-lbuttonup: .asciz "Left button released!"
-
 .data 
 
 pressed_buttons: .skip 3 # left right middle
@@ -63,10 +60,8 @@ ButtonPressed:
     cmp $0, %ecx                                    # if left button was not pressed
     jne 1f                                          # go to next
 
-    mov $0, %rax
-    lea lbuttondown(%rip), %rcx
-    SHADOW_SPACE
-    call printf
+    call PrintWfc
+
     jmp 0f
 
     1:
@@ -82,19 +77,6 @@ ButtonPressed:
 ButtonReleased:
     PROLOGUE
 
-    # left button
-    cmp $0, %ecx                                    # if left button was not released
-    jne 1f                                          # go to next
-
-    mov $0, %rax
-    lea lbuttonup(%rip), %rcx
-    SHADOW_SPACE
-    call printf
-    jmp 0f
-
-    1:
-
-    0:
     EPILOGUE
 
 #----------------------------------------------------------------------------------------------------------

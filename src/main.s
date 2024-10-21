@@ -121,6 +121,16 @@ main:
 
         call PollEvents
 
+        # load and unload map
+
+        movq loaded_tiles(%rip), %rcx
+        CLEAR_LIST %rcx
+        call GetLoadedTiles
+        movq %rax, loaded_tiles(%rip)               # in case list grew
+
+        PARAMS2 map_wfc(%rip), %rax
+        call SetCollapsedTiles
+
         call RenderFrame
 
         call DoEntityAi
@@ -142,6 +152,8 @@ main:
     PARAMS1 wfc_ruleset(%rip)
     call free
     PARAMS1 map_wfc(%rip)
+    call free
+    PARAMS1 loaded_tiles(%rip)
     call free
 
     PARAMS1 pf_frontier(%rip)

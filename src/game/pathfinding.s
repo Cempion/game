@@ -1,6 +1,6 @@
 
 .equ PF_INITIAL_CAPACITY, 1000 # initial capacity of the path finding data structures
-.equ PF_MAX_LOOP_COUNT, 10000 # how many times the main loop is allowed to run
+.equ PF_MAX_LOOP_COUNT, 1000 # how many times the main loop is allowed to run
 
 .data
 

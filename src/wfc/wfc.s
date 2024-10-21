@@ -15,6 +15,8 @@
 
 .global CreateWfc
 
+.global GetTileIndex
+
 .global CollapseToTile
 .global CollapseTile
 .global CollapseTiles
