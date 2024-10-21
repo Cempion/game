@@ -18,7 +18,7 @@ DeqCollQueue:
     cmpl %r8d, 8(%r9)                                       # if the read and write indexes are the same the queue is empty
     je 2f
 
-    DEQ_QUEUE %ecx , %r9
+    DEQ_QUEUE %ecx, %r9
     movq %rcx, %rax                                         # put result in rax
 
     jmp 1f

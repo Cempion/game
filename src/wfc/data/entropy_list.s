@@ -18,8 +18,7 @@
     skip_\@:                                    
     mulq %rdx                                               # get index to correct entropy
 
-    movq $4, %rdx
-    mulq %rdx                                               # since each index is 4 bytes
+    shl $2, %rax                                            # multiply by 4
 
     add $4, %rax                                            # account for the first size value
 .endm

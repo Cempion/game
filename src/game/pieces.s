@@ -274,25 +274,20 @@ WfcOnChange:
     leaq map_data(%rip), %r8
 
     popcnt %rdx, %rsi
-    cmp $0, %rsi                        # if entropy is 0
-    je 1f                               # go to special case
+    cmp $1, %rsi                        # if entropy is not 1
+    jne 1f                              # put ERROR (0) in map
 
-    cmp $1, %rsi                        # if entropy is 0
-    je 2f                               # add piece to map
+    # put piece in map
 
-    jmp 3f                              # dont do anything
+    bsf %rdx, %rax                      # get index of piece
+    inc %rax                            # correct for 0 entropy default
+    movb %al, (%r8, %rcx)               # move piece into map
+
+    jmp 2f                              # dont do anything
 
     1: # entropy = 0
         movb $0, (%r8, %rcx)            # move error piece into map
-        jmp 3f
-
-    2: # entropy = 1
-        bsf %rdx, %rax                  # get index of piece
-        inc %rax                        # correct for 0 entropy default
-
-        movb %al, (%r8, %rcx)           # move piece into map
-
-    3: # end
+    2:
     EPILOGUE
 
 .equ space, 0x20

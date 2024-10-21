@@ -18,7 +18,7 @@ DeqUncollQueue:
     cmpl %r8d, 8(%r9)                                       # if the read and write indexes are the same the queue is empty
     je 2f
 
-    DEQ_QUEUE %ecx , %r9
+    DEQ_QUEUE %ecx, %r9
     movq %rcx, %rax                                         # put result in rax
 
     jmp 1f
@@ -41,10 +41,10 @@ EnqUncollQueue:
     movq %rdx, %rsi                                         # move tileIndex to a register that ENQ_QUEUE wont touch
 
     GP_UNCOLL_QUEUE_INF %rdi, %rcx                          # get pointer to collapse queue info
-    IS_NOT_IN_COLL_QUEUE %rsi, %rdi                         # if in uncollapse queue info skip adding it again
+    IS_NOT_IN_UNCOLL_QUEUE %rsi, %rdi                       # if in uncollapse queue info skip adding it again
     jne 1f
 
-    GP_COLL_QUEUE %r9, %rcx                                 # get pointer to collapse queue info
+    GP_UNCOLL_QUEUE %r9, %rcx                               # get pointer to uncollapse queue
     ENQ_QUEUE %esi, %r9
     S_IN_UNCOLL_QUEUE $1, %rsi, %rdi                        # set uncollapse queue info to true (1)
     

@@ -24,6 +24,8 @@
 .global UncollapseTiles
 .global Regen
 
+.global SetCollapsedTiles
+
 #----------------------------------------------------------------------------------------------------------
 # MEMORY LAYOUT
 #----------------------------------------------------------------------------------------------------------
@@ -53,7 +55,7 @@
 # 64 | 8 bytes = pointer to collapse check queue
 # 72 | 8 bytes = pointer to collapse check info (side to skip and wether tile is in queue)
 # 80 | 8 bytes = pointer to uncollapse check queue
-# 88 | 8 bytes = pointer to uncollapse check info (side to skip and wether tile is in queue)
+# 88 | 8 bytes = pointer to uncollapse check info (wether tile is in queue)
 #
 # 4 bytes + 8 bytes * width * height = tile possibilities (so a max of 64 possibilities)
 #
@@ -438,13 +440,79 @@ CollapseAllTiles:
 
     EPILOGUE
 
+# uncollapses the given tile in the given wfc
+# PARAMS:
+# %rcx =    pointer to wfc
+# %rdx =    tileindex to uncollapse
+# RETURNS:
+# void
 UncollapseTile:
     PROLOGUE
+    push %r12
+    push %r13
+    movq %rcx, %r12                     # save pointer to wfc in callee saved register
+    movq %rdx, %r13                     # save tile index array pointer in callee saved register
 
+    # get possibilities to uncollapse to
+
+    GP_RULESET %rax, %r12                                   # get pointer to ruleset
+    G_MAX_PIECES %al, %rax                                  # ammount of possibilities to fill in
+
+    movq $64, %rcx                                           
+    sub %rax, %rcx                                          # 64 - maxPossibilities = amount of bits to shift
+
+    movq $-1, %rax                                          # all bits 1
+    shr %cl, %rax                                           # make all unused bits 0
+
+    PARAMS3 %r12, %r13, %rax
+    call UnionTilePossibilities
+
+    cmp $0, %rax                                            # if tile is unchanged skip propagation
+    je 1f
+
+    PARAMS2 %r12, %r13
+    call PropagateAddition
+
+    1: # skip propagation
+
+    pop %r13
+    pop %r12
     EPILOGUE
 
+# uncollapses the given tiles in the given wfc
+# PARAMS:
+# %rcx =    pointer to wfc
+# %rdx =    pointer to tile array (first 4 bytes specifying the amount of tile indexes, then 4 byte tile indexes)
+# RETURNS:
+# void
 UncollapseTiles:
     PROLOGUE
+
+    push %r12
+    push %r13
+    push %r14
+    movq %rcx, %r12                     # save pointer to wfc in callee saved register
+    movq %rdx, %r13                     # save tile index array pointer in callee saved register
+    movl (%rdx), %r14d                  # save size and use as counter 
+
+    1: #loop
+        cmp $0, %r14                    # if counter is 0                
+        je 2f                           # jump to end
+
+        dec %r14                        # decrement counter
+
+        movl 4(%r13, %r14, 4), %edx     # get tile to uncollapse
+
+        PARAMS2 %r12, %rdx
+        call UncollapseTile             # uncollapse tile
+
+        jmp 1b    
+
+    2: # end loop
+
+    pop %r14
+    pop %r13
+    pop %r12
 
     EPILOGUE
 
@@ -479,6 +547,62 @@ Regen:
 
     pop %r12
 
+    EPILOGUE
+
+# uncollapses the tiles not in the given list and collapses those that are, in the given wfc
+# PARAMS:
+# %rcx =    pointer to wfc
+# %rdx =    pointer to tile array (first 4 bytes specifying the amount of tile indexes, then 4 byte tile indexes)
+# RETURNS:
+# void
+SetCollapsedTiles:
+    PROLOGUE
+    push %r12
+    push %r13
+    push %r14
+    push %r15
+    movq %rcx, %r12                     # save pointer to wfc in callee saved register
+    movq %rdx, %r13                     # save tile index array pointer in callee saved register
+
+    G_ENT_OFFSET $1, %r12
+    GP_ENT_LIST %r14, %r12              # get pointer to entropy list
+    addq %rax, %r14                     # add offset to pointer
+
+    movl (%r14), %r15d                  # save collapsed tile count and use as counter 
+    1: # loop over collapsed tile
+        cmp $0, %r15                    # if counter is 0                
+        je 2f                           # jump to end
+        dec %r15                        # decrement counter
+
+        movl 4(%r14, %r15, 4), %edx     # get collapsed tile
+
+        movl (%r13), %ecx               # get amount of tiles in list
+        3: # loop over tiles in list
+            cmp $0, %rcx                    # if counter is 0                
+            je 4f                           # jump to end
+            dec %rcx                        # decrement counter
+
+            movl 4(%r13, %rcx, 4), %r8d     # get tile in list
+
+            cmpq %rdx, %r8                  # if collapsed tile is in list
+            je 1b                           # continue to check the next collapsed tile
+
+            jmp 3b
+        4: # end loop
+
+        PARAMS2 %r12, %rdx
+        call UncollapseTile             # uncollapse tile
+
+        jmp 1b    
+    2: # end loop
+
+    PARAMS2 %r12, %r13
+    call CollapseTiles                  # collapse the tiles in the list
+
+    pop %r15
+    pop %r14
+    pop %r13
+    pop %r12
     EPILOGUE
 
 #----------------------------------------------------------------------------------------------------------
@@ -867,6 +991,46 @@ IntersectTilePossibilities:
     2: # dont return 1 (return 0 instead)
     EPILOGUE
 
+# unions the possibilties of the given tile, and removes it from the entropy list if present.
+# PARAMS:
+# %rcx =    pointer to wfc
+# %rdx =    tileindex whose possibilities to union
+# %r8  =    possibilities to union with
+# RETURNS:
+# %rax =    1 if changed, 0 if unchanged.
+UnionTilePossibilities:
+    PROLOGUE
+
+    GP_TILE_POSS %r9, %rcx                                  # get pointer to tile possibilities
+    G_ENT %rdi, %rdx, %r9                                   # save old entropy
+    U_POSS %r8, %rdx, %r9                                   # intersect tile possibilities
+    G_ENT %rsi, %rdx, %r9                                   # get new entropy
+
+    movq $0, %rax                                           # initialize rax to 0 in case tile is unchanged.
+
+    cmp %rdi, %rsi                                          # if old and new entropy are the same nothing changed
+    je 2f                                                   # so you can skip to end
+
+    GP_ENT_INDEXES %r9, %rcx                                # get pointer to entropy list indexes
+    IS_NOT_IN_ENT_LIST %rdx, %r9                            # if not in entropy list skip updating
+    je 1f                                                   
+
+    PARAMS3 %rcx, %rdx, %rdi
+    call SubFromEntList                                     # remove tile from old entropy
+
+    1: # skip updating entropy list
+
+    GP_TILE_POSS %r9, %r12
+    G_POSS %rdx, %r13, %r9                                  # get tile possibilities
+
+    PARAMS2 %r13, %rdx                                      # tile index, tile possibilities
+    call *24(%r12)                                          # call onChange subroutine                                      
+
+    movq $1, %rax                                           # return 1 (got changed)
+
+    2: # dont return 1 (return 0 instead)
+    EPILOGUE
+
 # propagates the changes caused by the removal of possibilities of the given tile to its neighbours
 # PARAMS:
 # %rcx =    pointer to wfc
@@ -926,54 +1090,24 @@ CheckRemoval:
     cmp $0, %rcx                                            # if tile has no possibilities
     je 2f                                                   # skip checking
 
-    1: # loop over side
-        # loop housekeeping
+    1: # loop over sides
         cmp $0, %rbx                                        # if counter is 0
         je 2f                                               # end loop
-
         dec %rbx                                            # decrease counter
 
         G_SIDE_TO_SKIP %cl, %r13, %r14                      # get the side to skip                  
         cmp %rcx, %rbx                                      # if side to skip is the same as the current side
         je 1b                                               # skip current iteration
 
-        # actual code to loop
+        # get possible possibilities
 
-        # find possible possibilities on the given side
-        GP_RULESET %rdi, %r12                               # get pointer to ruleset
-        G_POSS %r8, %r13, %r15                              # get possibilities of current tile
-        popcnt %r8, %r9                                     # get entropy (amount of possibilities) and use as counter
-        movq $0, %r10                                       # use as resulting possible possibilities on the given side
-        movq $0, %rsi                                       # use as possibility index counter
-        3: # loop over possibilities
-            cmp $0, %r9                                     # if counter is 0 stop loop
-            je 4f
-
-            bsf %r8, %rcx                                   # get index of first 1 bit
-            add %rcx, %rsi                                  # add bit index to total for the correct possibility index
-
-            # get possible possibilities on the given side of the current piece
-
-            movq $4, %rax                                           # 4 since there are 4 sides (west, east, south, north)
-            mul %rsi                                                # 4 * piece
-            add %rbx, %rax                                          # add side to rax for index to find possibilities
-
-            orq 1(%rdi, %rax, 8), %r10                              # union possible possibilities of this piece with total
-
-            # shift possibilities for next bsf instruction
-
-            inc %rcx                                        # bit index + 1
-            inc %rsi                                        # since rcx got incremented
-            shr %cl, %r8                                    # shift to after the first 1 bit
-
-            dec %r9                                         # decrease counter
-            jmp 3b
-
-        4: # end possibility loop
+        G_POSS %rdx, %r13, %r15
+        PARAMS3 %r12, %rdx, %rbx
+        call GetPossiblePossibilities
 
         # intersect neighbour with possible possibilities
 
-        push %r10                                           # save possible possibilities
+        push %rax                                           # save possible possibilities
 
         PARAMS3 %r12, %r13, %rbx                            # wfc pointer, tile index, side
         call GetTileNeighbour
@@ -986,7 +1120,7 @@ CheckRemoval:
 
         pop %rdx                                            # restore neighbour tile index
 
-        # if changed add neighbour to check queue
+        # add neighbour to check queue if changed
 
         cmp $0, %rax                                        # if intersect did not change neighbour
         je 1b                                               # skip putting the neighbour in check list
@@ -1010,4 +1144,209 @@ CheckRemoval:
     pop %r13
     pop %r12
 
+    EPILOGUE
+
+# propagates the changes caused by the addition of possibilities of the given tile to its neighbours
+# PARAMS:
+# %rcx =    pointer to wfc
+# %rdx =    tileindex where possibilities got added
+# RETURNS:
+# void
+PropagateAddition:
+    PROLOGUE
+    push %r12
+    movq %rcx, %r12                                         # save wfc pointer to callee saved register
+
+    PARAMS2 %r12, %rdx
+    call EnqUncollQueue                                     # add starting tile to uncollapse queue
+
+    1: # loop
+
+        PARAMS1 %r12
+        call DeqUncollQueue                                 # get first tile in queue
+
+        cmp $-1, %rax                                       # if queue is empty stop loop
+        je 2f
+
+        PARAMS2 %r12, %rax
+        call CheckAddition                                  # check neighbouring tile possibilities
+
+        jmp 1b
+
+    2: # end loop
+
+    call RegenUncollQueueInf
+
+    pop %r12
+    EPILOGUE
+
+# used in addition propagation to check the neighbours of the given tile and add now valid possibilities.
+# skips tiles that have already been in the uncollapsed queue this propagation.
+# PARAMS:
+# %rcx =    pointer to wfc
+# %rdx =    tileindex whose neighbours to update
+# RETURNS:
+# void
+CheckAddition:
+    PROLOGUE
+    push %r12
+    push %r13
+    push %r14
+    push %r15
+    push %rbx
+    movq %rcx, %r12                                         # save wfc pointer to callee saved register
+    movq %rdx, %r13                                         # save tile index to callee saved register
+    GP_RULESET %r14, %r12                                   # save ruleset pointer to callee saved register
+    GP_TILE_POSS %r15, %r12                                 # save tile possibilities pointer to callee saved register
+    movq $4, %rbx                                           # use as counter and side value, 4 sides to check
+
+    1: # loop over sides
+        cmp $0, %rbx                                        # if counter is 0
+        je 2f                                               # end loop
+        dec %rbx                                            # decrease counter
+
+        PARAMS3 %r12, %r13, %rbx                            # wfc pointer, tile index, side
+        call GetTileNeighbour                               # get neighbour
+
+        GP_UNCOLL_QUEUE_INF %rcx, %r12                      # get uncollapse queue info
+        IS_NOT_IN_UNCOLL_QUEUE %rax, %rcx                   # if in uncollapse queue
+        jne 1b                                              # continue loop
+
+        GP_ENT_INDEXES %rcx, %r12                           # get pointer to entropy indexes
+        IS_NOT_IN_ENT_LIST %rax, %rcx                       # if in entropy list
+        jne 6f                                              # remove possibilities of current tile based on neighbour
+
+            # add possible possibilities to neighbour
+
+            # rax = neighbour tile index
+            # r12 = wfc pointer
+            # r13 = current tile index
+            # r14 = ruleset pointer
+            # r15 = tile possibilities pointer
+            # rbx = current side
+
+            push %rax                                           # save neighbour tile index
+
+            # find possible possibilities on the given side
+
+            G_POSS %rdx, %r13, %r15
+            PARAMS3 %r12, %rdx, %rbx
+            call GetPossiblePossibilities
+
+            5: # union neighbour with possible possibilities
+
+            PARAMS3 %r12, (%rsp), %rax
+            call UnionTilePossibilities
+
+            pop %rdx                                            # restore neighbour tile index
+
+            # add neighbour to check queue if changed
+
+            cmp $0, %rax                                        # if intersect did not change neighbour
+            je 1b                                               # skip putting the neighbour in check list
+
+            PARAMS2 %r12, %rdx                                  # wfc pointer, neighbour index, opposite side
+            call EnqUncollQueue
+
+            jmp 1b
+
+        6: # remove possibilities from current tile based on neighbour
+            # rax = neighbour tile index
+            # r12 = wfc pointer
+            # r13 = current tile index
+            # r14 = ruleset pointer
+            # r15 = tile possibilities pointer
+            # rbx = current side
+
+            # get possible tiles acording to neighbour
+
+            G_POSS %rdx, %rax, %r15                             # get possibilities of neighbour
+            movq %rbx, %r8
+            xorq $1, %r8                                        # get opposide side
+            PARAMS3 %r12, %rdx, %r8
+            call GetPossiblePossibilities
+
+            # intersect current tile with possible possibilities
+
+            PARAMS3 %r12, %r13, %rax
+            call IntersectTilePossibilities
+
+            # add neighbour to check queue if changed
+
+            cmp $0, %rax                                        # if intersect did not change neighbour
+            je 1b                                               # skip putting the neighbour in check list
+
+            PARAMS2 %r12, %r13
+            call PropagateRemoval
+
+            jmp 1b
+
+    2: # stop side loop
+
+    pop %rbx
+    pop %r15
+    pop %r14
+    pop %r13
+    pop %r12
+    EPILOGUE
+
+# used in addition propagation to check the neighbours of the given tile and add now valid possibilities.
+# skips tiles that have already been in the uncollapsed queue this propagation.
+# PARAMS:
+# %rcx =    pointer to wfc
+# %rdx =    possibilities to get the possible possibilities of on the given side
+# %r8  =    side
+# RETURNS:
+# %rax =    the possible possibilities on the given side of the given possibilities
+GetPossiblePossibilities:
+    PROLOGUE
+    GP_RULESET %rdi, %rcx                               # free rcx for shr
+    movq %rdx, %rsi                                     # free rdx for mul
+
+    # find possible possibilities on the given side
+
+    popcnt %rsi, %r9                                    # get the entropy of the possibilities
+    cmp $0, %r9                                         # if entropy is 0
+    je 2f                                               # all possibilities are possible
+
+    # loop ruleset
+
+    movq $0, %r10                                       # use as resulting possible possibilities on the given side
+    movq $0, %r11                                       # use as possibility index counter
+    1: # loop over possibilities
+        cmp $0, %r9                                     # if counter is 0
+        je 3f                                           # return result and stop loop
+
+        bsf %rsi, %rcx                                  # get index of first 1 bit
+        add %rcx, %r11                                  # add bit index to total for the correct possibility index
+
+        # get possible possibilities on the given side of the current piece
+
+        movq $4, %rax                                           # 4 since there are 4 sides (west, east, south, north)
+        mul %r11                                                # 4 * piece
+        add %r8, %rax                                           # add side to r11 for index to find possibilities
+
+        orq 1(%rdi, %rax, 8), %r10                              # union possible possibilities of this piece with total
+
+        # shift possibilities for next bsf instruction
+
+        inc %rcx                                        # bit index + 1
+        inc %r11                                        # since rcx got incremented
+        shr %cl, %rsi                                   # shift to after the first 1 bit
+
+        dec %r9                                         # decrease counter
+        jmp 1b
+
+    2: # entropy = 0 so everything is possible
+
+    G_MAX_PIECES %r9b, %rdi                                 # ammount of possibilities to fill in
+
+    movq $64, %rcx                                           
+    sub %r9, %rcx                                           # 64 - maxPossibilities = amount of bits to shift
+
+    movq $-1, %r10                                          # all bits 1
+    shr %cl, %r10                                           # make all unused bits 0
+
+    3: # return
+    movq %r10, %rax
     EPILOGUE
