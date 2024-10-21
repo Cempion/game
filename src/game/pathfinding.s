@@ -71,9 +71,8 @@ CalculatePath:
     mulps %xmm3, %xmm2                      # (path_width - 1) * 0.5
     shufps $0, %xmm2, %xmm2                 # fill entire register
 
-    # save destination position as node position
-    movaps %xmm1, %xmm3
-    addps %xmm2, %xmm3                      # pos + (path_width - 1) * 0.5
+    # save destination position as integers
+    movaps %xmm1, %xmm3                    
     roundps $1, %xmm3, %xmm3                # floor the floats for correct tile position
     cvttps2dq %xmm3, %xmm3                  # convert to int
     movd %xmm3, %r12                        # move to int register
@@ -130,7 +129,9 @@ CalculatePath:
 
         movq pf_visited_pos(%rip), %rcx
         GET_LIST %rcx, %rbx, %r14               # get position of the extracted node
-        cmp %r14, %r12                          # if current position is the same as destination
+        PARAMS3 %r14, %r13, %r12
+        call IsNodeDestination
+        cmp $1, %rax                            # if current position is the same as destination
         je 2f                                   # found path
 
         # check neighbours
@@ -159,6 +160,8 @@ CalculatePath:
         GET_SIZE_BH %rcx, %ecx                  # get element count of frontier
         cmp $0, %rcx                            # if there are more than 0 nodes in frontier
         jg 1b                                   # continue loop
+
+        jmp 3f
     
     2: # reconstruct path
     # rbx = index of destination node
@@ -431,6 +434,74 @@ IsNodeValid:
 
     5: # return 0
     movq $0, %rax           # return false
+
+    6: # exit
+    pop %rbx
+    pop %r15
+    pop %r14
+    pop %r13
+    pop %r12
+    EPILOGUE
+
+# checks if the given node is at the destination based on the path size.
+# PARAMS:
+# %rcx =    position of the node as 2 4 byte packed integers
+# %rdx =    the width of the path in blocks
+# %r8  =    destination as 2 4 byte packed integers
+# RETURNS:
+# %rax  =   1 if at destination, 0 if not
+IsNodeDestination:
+    PROLOGUE
+    push %r8
+    push %r12
+    push %r13
+    push %r14
+    push %r15
+    push %rbx
+
+    # move node position to 2 registers
+    movl %ecx, %r12d            # x pos
+    shr $32, %rcx               
+    movl %ecx, %r13d            # z pos
+
+    # get minimum position (exclusive) of the grid to check
+    movl %r12d, %r14d
+    subl %edx, %r14d
+
+    movl %r13d, %r15d
+    subl %edx, %r15d
+
+    # loop over a grid with the given node as the top right corner
+
+    1: # x loop
+        cmpl %r14d, %r12d       # if counter equals minimum x
+        je 2f                   # exit loop
+
+        movl %r13d, %ebx        # use as y loop counter
+        3: # y loop
+            cmpl %r15d, %ebx        # if counter equals minimum y
+            je 4f                   # exit loop
+
+            movq -8(%rbp), %rcx
+            movl %ebx, %edx         # put in y pos
+            shlq $32, %rdx          # put at the end
+            orq %r12, %rdx          # put in the x pos
+            cmpq %rcx, %rdx         # position is the same as destination
+            je 5f                   # return 1 (true)
+
+            decl %ebx               # decrement counter
+            jmp 3b
+        4: # end y loop
+
+        decl %r12d              # decrement counter
+        jmp 1b
+    2: # end x loop
+
+    movq $0, %rax           # return false
+    jmp 6f
+
+    5: # return 1
+    movq $1, %rax           # return true
 
     6: # exit
     pop %rbx
