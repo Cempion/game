@@ -1,35 +1,35 @@
 
 .data
 
-monster_size: .float 1
-monster_height: .float 3
+ravager_size: .float 2
+ravager_height: .float 3.5
 # half width, half height (in pixels), texture index
-monster_texture: .byte 0x64, 1
+ravager_texture: .byte 0x78, 3
 
-monster_acceleration: .float 0.0125
+ravager_acceleration: .float 0.02
 
 .text
 
 #----------------------------------------------------------------------------------------------------------
-# Make monster
+# Make ravager
 #----------------------------------------------------------------------------------------------------------
 
-# makes a new monster entity with the given parameters
+# makes a new ravager entity with the given parameters
 # PARAMS:
 # %xmm0 =   x, z position as 2 floats
 # RETURNS:
 # %rax =    the index of the created entity
-MakeMonster:
+MakeRavager:
     PROLOGUE
 
     # make entity
 
-    movss monster_height(%rip), %xmm1   # height
-    movss monster_size(%rip), %xmm2     # size
+    movss ravager_height(%rip), %xmm1   # height
+    movss ravager_size(%rip), %xmm2     # size
     shufps $0, %xmm1, %xmm1             # fill entire register with second float
     movss %xmm2, %xmm1                  # size height, 2 floats
-    movw monster_texture(%rip), %r8w    # texture
-    leaq MonsterAi(%rip), %r9           # ai subroutine
+    movw ravager_texture(%rip), %r8w    # texture
+    leaq RavagerAi(%rip), %r9           # ai subroutine
     call MakeEntity
 
     # make path list
@@ -51,12 +51,12 @@ MakeMonster:
 # Ai
 #----------------------------------------------------------------------------------------------------------
 
-# handles the monster ai
+# handles the ravager ai
 # PARAMS:
 # %rcx =    index of the entity to run this for
 # RETURNS:
 # void
-MonsterAi:
+RavagerAi:
     PROLOGUE
     push %r12
     push %r13 
@@ -134,7 +134,7 @@ MonsterAi:
     divps %xmm2, %xmm1                  # vec / -length = vec from position to target
 
     # get acceleration
-    movss monster_acceleration(%rip), %xmm2
+    movss ravager_acceleration(%rip), %xmm2
     shufps $0, %xmm2, %xmm2
     mulps %xmm2, %xmm1                  # multiply direction by acceleration
 

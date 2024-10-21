@@ -2,6 +2,8 @@
 .include "game/pathfinding.s"
 .include "game/entities/player.s"
 .include "game/entities/monster.s"
+.include "game/entities/spider.s"
+.include "game/entities/ravager.s"
 
 .equ MAX_ENTITIES, 5
 
