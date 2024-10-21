@@ -368,7 +368,7 @@ CollapseTile:
 # collapses the given tiles in the given wfc
 # PARAMS:
 # %rcx =    pointer to wfc
-# %rdx =    pointer to tile array (first 4 bytes specifying the amount of tile indexes, then 4 byte tile indexes)
+# %rdx =    pointer to tile list (first 4 bytes capacity, next 4 bytes element count, then 8 bytes for each tile index)
 # RETURNS:
 # void
 CollapseTiles:
@@ -379,7 +379,7 @@ CollapseTiles:
     push %r14
     movq %rcx, %r12                     # save pointer to wfc in callee saved register
     movq %rdx, %r13                     # save tile index array pointer in callee saved register
-    movl (%rdx), %r14d                  # save size and use as counter 
+    movl 4(%rdx), %r14d                 # save size and use as counter 
 
     1: #loop
         cmp $0, %r14                    # if counter is 0                
@@ -387,7 +387,7 @@ CollapseTiles:
 
         dec %r14                        # decrement counter
 
-        movl 4(%r13, %r14, 4), %edx     # get tile to add
+        movq 8(%r13, %r14, 8), %rdx     # get tile to add
 
         GP_TILE_POSS %r8, %r12          # get pointer to tile possibilities
         G_ENT %r9, %rdx, %r8            # get tile entropy
@@ -482,7 +482,7 @@ UncollapseTile:
 # uncollapses the given tiles in the given wfc
 # PARAMS:
 # %rcx =    pointer to wfc
-# %rdx =    pointer to tile array (first 4 bytes specifying the amount of tile indexes, then 4 byte tile indexes)
+# %rdx =    pointer to tile list (first 4 bytes capacity, next 4 bytes element count, then 8 bytes for each tile index)
 # RETURNS:
 # void
 UncollapseTiles:
@@ -493,7 +493,7 @@ UncollapseTiles:
     push %r14
     movq %rcx, %r12                     # save pointer to wfc in callee saved register
     movq %rdx, %r13                     # save tile index array pointer in callee saved register
-    movl (%rdx), %r14d                  # save size and use as counter 
+    movl 4(%rdx), %r14d                 # save size and use as counter 
 
     1: #loop
         cmp $0, %r14                    # if counter is 0                
@@ -501,7 +501,7 @@ UncollapseTiles:
 
         dec %r14                        # decrement counter
 
-        movl 4(%r13, %r14, 4), %edx     # get tile to uncollapse
+        movq 8(%r13, %r14, 8), %rdx     # get tile to uncollapse
 
         PARAMS2 %r12, %rdx
         call UncollapseTile             # uncollapse tile
@@ -552,7 +552,7 @@ Regen:
 # uncollapses the tiles not in the given list and collapses those that are, in the given wfc
 # PARAMS:
 # %rcx =    pointer to wfc
-# %rdx =    pointer to tile array (first 4 bytes specifying the amount of tile indexes, then 4 byte tile indexes)
+# %rdx =    pointer to tile list (first 4 bytes capacity, next 4 bytes element count, then 8 bytes for each tile index)
 # RETURNS:
 # void
 SetCollapsedTiles:
@@ -576,13 +576,13 @@ SetCollapsedTiles:
 
         movl 4(%r14, %r15, 4), %edx     # get collapsed tile
 
-        movl (%r13), %ecx               # get amount of tiles in list
+        movl 4(%r13), %ecx               # get amount of tiles in list
         3: # loop over tiles in list
             cmp $0, %rcx                    # if counter is 0                
             je 4f                           # jump to end
             dec %rcx                        # decrement counter
 
-            movl 4(%r13, %rcx, 4), %r8d     # get tile in list
+            movq 8(%r13, %rcx, 8), %r8     # get tile in list
 
             cmpq %rdx, %r8                  # if collapsed tile is in list
             je 1b                           # continue to check the next collapsed tile
@@ -624,8 +624,8 @@ GetTileIndex:
 
     movq %rdx, %rcx                                         # since LOOP_QUAD changed rdx
 
-    LOOP_QUAD %rcx, %rdi                                   # loop width
-    LOOP_QUAD %r8, %rsi                                    # loop height
+    LOOP_QUAD %rcx, %rdi                                    # loop width
+    LOOP_QUAD %r8, %rsi                                     # loop height
 
     movq %r8, %rax                                          # put y position in rax
     movq $0, %rdx                                           # make 0 to prepare for mult
