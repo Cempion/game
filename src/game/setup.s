@@ -59,7 +59,7 @@ SetupGame:
     call MakePlayer
 
     movsd test_start1(%rip), %xmm0
-    #call MakeMonster
+    call MakeMonster
 
     movsd test_start2(%rip), %xmm0
     call MakeSpider

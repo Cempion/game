@@ -4,7 +4,7 @@
 ravager_size: .float 2
 ravager_height: .float 3.5
 # half width, half height (in pixels), texture index
-ravager_texture: .byte 0xFF, 3
+ravager_texture: .byte 0x67, 3
 
 ravager_acceleration: .float 0.02
 

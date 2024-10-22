@@ -199,7 +199,7 @@ rayHit getHitEntity(int index) {
     vec4 textureColor = texture(entityTextures, vec3(textureCoord.xy, textureIndex));
 
     // if texture color is transparent there is no hit
-    isHit *= int(step(textureColor.a, 1));
+    isHit *= int(step(1, textureColor.a));
 
     return rayHit(distance(hitPoint, camera.pos) * isHit + maxRayDist * (1 - isHit), textureColor);
 }
