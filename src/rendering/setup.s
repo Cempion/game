@@ -1,6 +1,6 @@
 # how many pixels to render (rays to cast)
-.equ RENDER_WIDTH, 256 #256
-.equ RENDER_HEIGHT, 288 #288
+.equ RENDER_WIDTH, 128 #256
+.equ RENDER_HEIGHT, 144 #288
 
 # used to calculate the ratio between width and height for the view, decides which direction 
 # the rays are cast and the final size of the view on the screen
@@ -77,6 +77,10 @@ textures_uniform: .asciz "textures"
 textures_entities_uniform: .asciz "entityTextures"
 
 # texture paths
+texture_wall: .asciz "textures\\brickWall.png"
+texture_floor: .asciz "textures\\brickFloor.png"
+texture_ceiling: .asciz "textures\\brickCeiling.png"
+
 texture_monster: .asciz "textures\\Monster.png"
 texture_spider: .asciz "textures\\Spider.png"
 texture_ravager: .asciz "textures\\Ravager.png"
@@ -379,10 +383,61 @@ SetupRenderer:
     call glTexParameteri
 
     # target, level, internal_format, width, height, depth, border, external_format, type, data (uninitialized)
-    PARAMS10 $GL_TEXTURE_2D_ARRAY, $0, $GL_RGBA8, $16, $16, $3, $0, $GL_RGBA, $GL_UNSIGNED_BYTE, $0
+    PARAMS10 $GL_TEXTURE_2D_ARRAY, $0, $GL_RGBA8, $16, $16, $4, $0, $GL_RGBA, $GL_UNSIGNED_BYTE, $0
     SHADOW_SPACE
     call *glTexImage3D(%rip)
     add $80, %rsp                           # restore stack pointer
+
+    # load wall texture
+
+    leaq texture_wall(%rip), %rcx
+    leaq stbi_width(%rip), %rdx
+    leaq stbi_height(%rip), %r8
+    call load_image
+
+    # target, level, x offset, y offset, z offset, width, height, depth, external_format, type, data (uninitialized)
+    push %rax
+    PARAMS11 $GL_TEXTURE_2D_ARRAY, $0, $0, $0, $1, $16, $16, $1, $GL_RGBA, $GL_UNSIGNED_BYTE, %rax
+    SHADOW_SPACE
+    call *glTexSubImage3D(%rip)
+    add $88, %rsp                           # restore stack pointer
+
+    pop %rcx
+    call free_image
+
+    # load floor texture
+
+    leaq texture_floor(%rip), %rcx
+    leaq stbi_width(%rip), %rdx
+    leaq stbi_height(%rip), %r8
+    call load_image
+
+    # target, level, x offset, y offset, z offset, width, height, depth, external_format, type, data (uninitialized)
+    push %rax
+    PARAMS11 $GL_TEXTURE_2D_ARRAY, $0, $0, $0, $2, $16, $16, $1, $GL_RGBA, $GL_UNSIGNED_BYTE, %rax
+    SHADOW_SPACE
+    call *glTexSubImage3D(%rip)
+    add $88, %rsp                           # restore stack pointer
+
+    pop %rcx
+    call free_image
+
+    # load ceiling texture
+
+    leaq texture_ceiling(%rip), %rcx
+    leaq stbi_width(%rip), %rdx
+    leaq stbi_height(%rip), %r8
+    call load_image
+
+    # target, level, x offset, y offset, z offset, width, height, depth, external_format, type, data (uninitialized)
+    push %rax
+    PARAMS11 $GL_TEXTURE_2D_ARRAY, $0, $0, $0, $3, $16, $16, $1, $GL_RGBA, $GL_UNSIGNED_BYTE, %rax
+    SHADOW_SPACE
+    call *glTexSubImage3D(%rip)
+    add $88, %rsp                           # restore stack pointer
+
+    pop %rcx
+    call free_image
 
     # entity textures
 

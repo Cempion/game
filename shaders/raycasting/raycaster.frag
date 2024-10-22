@@ -77,6 +77,18 @@ uint getBlock(vec2 pos) {
     return texelFetch(blockData, int(block), 0).r;
 }
 
+vec2 rotateVector(vec2 vec, uint rotation) {
+    if (rotation == 0) {
+        return vec;
+    } else if (rotation == 1) {
+        return vec2(vec.y, -vec.x);
+    } else if (rotation == 2) {
+        return vec2(-vec.x, -vec.y);
+    } else if (rotation == 3) {
+        return vec2(-vec.y, vec.x);
+    }
+}
+
 rayHit getHitX() {
     int dirX = int(step(0, rayTarget.x)); // 0 if negative, 1 if positive
 
@@ -105,9 +117,18 @@ rayHit getHitX() {
     // get intersected block
     int dirZ = int((step(0, rayTarget.z) - 0.5) * 2); // -1 - 1
     int blockComp = int((step(1, getBlock(rayPos.xz + vec2(0.5 * dirX, -epsilon * dirZ)) & 1) - 0.5) * 2); // offset to the camera, is it air or not?
-    uint piece = getPiece(rayPos.xz + vec2(0.5 * dirX, -epsilon * dirZ * blockComp)); // if wall use that position, if air offset away from camera
+    vec2 blockPos = rayPos.xz + vec2(0.5 * dirX, -epsilon * dirZ * blockComp); // if wall use that position, if air offset away from camera
+    uint blockData = getBlock(blockPos); 
 
-    return rayHit(distance(camera.pos, rayPos), vec4(piece, 11 - piece, piece, 1) / 11);
+    uint wallTex = blockData >> 1;
+
+    // convert dirX to 0 - 1
+    dirX = int((dirX + 1) / 2);
+
+    vec2 texCoord = fract(vec2(blockPos.y + 1 * floor(blockPos.x + (1 - dirX)), rayPos.y) / 4);
+    texCoord.x = texCoord.x * dirX + (1 - texCoord.x) * (1 - dirX); // flip x based on direction
+
+    return rayHit(distance(camera.pos, rayPos), texture(textures, vec3(texCoord.xy, wallTex)));
 }
 
 rayHit getHitZ() {
@@ -138,16 +159,38 @@ rayHit getHitZ() {
     // get intersected block
     int dirX = int((step(0, rayTarget.x) - 0.5) * 2); // -1 - 1
     int blockComp = int((step(1, getBlock(rayPos.xz + vec2(-epsilon * dirX, 0.5 * dirZ)) & 1) - 0.5) * 2); // offset to the camera, is it air or not?
-    uint piece = getPiece(rayPos.xz + vec2(-epsilon * dirX * blockComp, 0.5 * dirZ)); // if wall use that position, if air offset away from camera
+    vec2 blockPos = rayPos.xz + vec2(-epsilon * dirX * blockComp, 0.5 * dirZ); // if wall use that position, if air offset away from camera
+    uint blockData = getBlock(blockPos); 
 
-    return rayHit(distance(camera.pos, rayPos), vec4(piece, 11 - piece, piece, 1) / 11);
+    uint wallTex = blockData >> 1;
+
+    // convert dirZ to 0 - 1
+    dirZ = int((dirZ + 1) / 2);
+
+    vec2 texCoord = fract(vec2(blockPos.x + 1 * floor(blockPos.y + (1 - dirZ)), rayPos.y) / 4);
+    texCoord.x = texCoord.x * dirZ + (1 - texCoord.x) * (1 - dirZ); // flip x based on direction
+
+    return rayHit(distance(camera.pos, rayPos), texture(textures, vec3(texCoord.xy, wallTex)));
 }
 
 rayHit getHitY() {
     float dir = step(0, rayTarget.y); // 0 if negative, 1 if positive
     float multiplier = (1 - dir) * (-camera.pos.y / rayTarget.y) + dir * ((blockHeight - camera.pos.y) / rayTarget.y);
+    vec3 hitPos = camera.pos + rayTarget * multiplier;
 
-    return rayHit(length(rayTarget * multiplier), vec4(0, 0, 0, 1));
+    // get block data
+    uint blockData = getBlock(hitPos.xz);
+    uint floorRot = (blockData >> 1) & 0x7;
+    uint ceilingRot = (blockData >> 3) & 0x7;
+    uint floorTex = (blockData >> 6) & 0x1F;
+    uint ceilingTex = (blockData >> 11) & 0x1F;
+
+    vec2 texCoord = fract(hitPos.xz / 4); // divide by 4 since each tile is 4 pixels and the texture is 16 pixels
+
+    vec4 floorColor = texture(textures, vec3(rotateVector(texCoord, floorRot).xy, floorTex));
+    vec4 ceilingColor = texture(textures, vec3(rotateVector(texCoord, ceilingRot).xy, ceilingTex));
+
+    return rayHit(length(rayTarget * multiplier), ceilingColor * step(2, hitPos.y) + floorColor * step(hitPos.y, 2));
 }
 
 rayHit getHitEntity(int index) {
