@@ -18,6 +18,7 @@ pf_south: .long 0, -1
 pf_north: .long 0, 1
 
 .text
+path_failed: .asciz "path too difficult to find!"
 
 # initializes the data structures needed to do pathfinding
 SetupPathFinding:
@@ -254,10 +255,10 @@ CalculatePath:
 # void
 CheckNeighbour:
     PROLOGUE
-    sub $8, %rsp
     push %r12
     push %r13
     push %r14
+    push %r15
 
     movq %rcx, %r12                         # save node index in callee saved register
     movq %r9, %r14                          # save destination in callee saved register
@@ -283,8 +284,8 @@ CheckNeighbour:
 
     # calculate distance from start
     movq pf_cost_so_far(%rip), %rcx
-    GET_LIST %rcx, %r12, %rcx               # get cost of came from
-    inc %rcx                                # add 1 to the cost for distance from start
+    GET_LIST %rcx, %r12, %rdx               # get cost of came from
+    incq %rdx                               # add 1 to the cost for distance from start
 
     # calculate heuristic (manhattan distance from destination)
     movd %r13, %xmm0                        # neighbour position
@@ -292,11 +293,9 @@ CheckNeighbour:
     psubd %xmm1, %xmm0                      # subtract packed integers
     pabsd %xmm0, %xmm0                      # get the absolute of both packed integers
     phaddd %xmm0, %xmm0                     # add packed integers together
-    movd %xmm0, %rdx                        # resulting manhattan distance
+    movd %xmm0, %r15                        # resulting manhattan distance
 
-    # get resulting new cost
-    add %rdx, %rcx
-    movq %rcx, %r14
+    movq %rdx, %r14                         # save total cost
 
     # check if neighbour is already visited
     PARAMS2 pf_visited_pos(%rip), %r13
@@ -318,7 +317,8 @@ CheckNeighbour:
     1: # add neighbour to frontier
         # r12 = came from index
         # r13 = neighbour pos
-        # r14 = new cost
+        # r14 = new total cost
+        # r15 = heuristic
 
         # position
         PARAMS2 pf_visited_pos(%rip), %r13
@@ -339,7 +339,8 @@ CheckNeighbour:
 
         GET_SIZE_LIST %rax, %edx
         decq %rdx                               # get last index
-        PARAMS3 pf_frontier(%rip), %rdx, %r14   
+        PARAMS3 pf_frontier(%rip), %rdx, %r14 
+        addq %r15, %r8                          # add heuristic  
         call InsertInBinaryHeap                 # put tile in frontier
         movq %rax, pf_frontier(%rip)            # in case array grew
 
@@ -347,7 +348,8 @@ CheckNeighbour:
     2: # update neighbour already visited
         # r12 = came from index
         # r13 = neighbour index
-        # r14 = new cost
+        # r14 = new total cost
+        # r15 = heuristic
 
         # came from
         movq pf_came_from(%rip), %rcx
@@ -366,12 +368,15 @@ CheckNeighbour:
 
         # update priority
         movq pf_frontier(%rip), %rcx
-        SET_PRIORITY_BH %rcx, %rax, %r14
+        movq %r14, %rdx
+        addq %r15, %rdx                         # add heuristic
+        SET_PRIORITY_BH %rcx, %rax, %rdx
 
         PARAMS2 %rcx, %rax
         call BubbleUp
 
     3: # exit
+    pop %r15
     pop %r14
     pop %r13
     pop %r12

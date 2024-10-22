@@ -37,13 +37,13 @@ SetupGame:
     call CreateWfc
     movq %rax, map_wfc(%rip)
 
-    PARAMS3 map_wfc(%rip), $0, $10
-    call CollapseToTile
-
     # make loaded tiles list
     PARAMS1 $10
     call MakeList
     movq %rax, loaded_tiles(%rip)
+
+    PARAMS3 map_wfc(%rip), $0, $10
+    call CollapseToTile
 
     #----------------------------------------------------------------------------------------------------------
     # Setup pathfinding
@@ -62,7 +62,7 @@ SetupGame:
     #call MakeMonster
 
     movsd test_start2(%rip), %xmm0
-    #call MakeSpider
+    call MakeSpider
 
     movsd test_start3(%rip), %xmm0
     call MakeRavager

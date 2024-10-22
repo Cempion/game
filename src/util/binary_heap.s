@@ -329,7 +329,7 @@ BubbleUp:
     GET_PRIORITY_BH %rcx, %r8, %r10         # parent priority
 
     cmpq %r10, %r9                          # if child priority is greater or equal to that of parent
-    jge 1f                                  # do nothing
+    jg 1f                                   # do nothing
 
     # swap nodes around
 

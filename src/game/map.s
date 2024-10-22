@@ -1,8 +1,8 @@
-.equ WFC_WIDTH, 50
-.equ WFC_HEIGHT, 50
+.equ WFC_WIDTH, 20
+.equ WFC_HEIGHT, 20
 .equ WFC_TILE_COUNT, WFC_WIDTH * WFC_HEIGHT
 
-.equ LOAD_DISTANCE, 16
+.equ LOAD_DISTANCE, 32
 
 .data 
 
@@ -124,6 +124,7 @@ GetLoadedTiles:
     movq %rcx, %r12
 
     movq entity_count(%rip), %r13               # get entity count and use as counter
+    movq $1, %r13
     1: # entity loop
         cmp $0, %r13                                # if counter is 0
         je 2f                                       # exit loop
