@@ -4,7 +4,7 @@ AS = gcc
 ASFLAGS = -I src -I src/wfc -I src/wfc/data -I src/rendering -I src/listeners -g
 
 # Source files and output
-SRC = src/main.s src/wfc/wfc.s
+SRC = src/main.s src/wfc/wfc.s lib/stb_image.c
 OUT = build
 
 # Rule to build the executable

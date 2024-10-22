@@ -4,7 +4,7 @@
 monster_size: .float 1
 monster_height: .float 3
 # half width, half height (in pixels), texture index
-monster_texture: .byte 0x64, 1
+monster_texture: .byte 0x53, 1
 
 monster_acceleration: .float 0.0125
 

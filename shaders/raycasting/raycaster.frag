@@ -173,6 +173,8 @@ rayHit getHitEntity(int index) {
 
     vec3 hitPoint = camera.pos + l * rayTarget; 
 
+    // check if hit
+
     vec2 textureCoord = vec2((t + 1) / 2, hitPoint.y / heights[index]);
 
     // check if l > 0, t > 0 and texture coords are within 0 - 1, if not there is no hit
@@ -180,7 +182,26 @@ rayHit getHitEntity(int index) {
                 int(step(0, textureCoord.x)) * int(step(textureCoord.x, 1)) * 
                 int(step(0, textureCoord.y)) * int(step(textureCoord.y, 1));
 
-    return rayHit(distance(hitPoint, camera.pos) * isHit + maxRayDist * (1 - isHit), vec4(textureCoord, 0, 1));
+    // get texture color
+
+    // get texture data
+    uint textureData = textureData[index / 2];
+    textureData = (textureData >> (index % 2) * 16) & 0xFFFF;
+    float halfWidth = (float((textureData & 0XF) + 1) * 2) / textureSize(entityTextures, 0).x;
+    float halfHeight = (float(((textureData >> 4) & 0XF) + 1) * 2) / textureSize(entityTextures, 0).y;
+    uint textureIndex = (textureData >> 8) & 0XFF;
+
+    // map coordinates
+    textureCoord -= vec2(0.5, 0.5);
+    textureCoord *= vec2(halfWidth, halfHeight);
+    textureCoord += vec2(0.5, 0.5);
+
+    vec4 textureColor = texture(entityTextures, vec3(textureCoord.xy, textureIndex));
+
+    // if texture color is transparent there is no hit
+    isHit *= int(step(textureColor.a, 1));
+
+    return rayHit(distance(hitPoint, camera.pos) * isHit + maxRayDist * (1 - isHit), textureColor);
 }
 
 rayHit getHitEntities() {

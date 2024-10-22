@@ -138,6 +138,7 @@ glEnableVertexAttribArray:  .asciz "        glEnableVertexAttribArray"
 
 glActiveTexture:            .asciz "        glActiveTexture"
 glTexImage3D:               .asciz "        glTexImage3D"
+glTexSubImage3D:            .asciz "        glTexSubImage3D"
 
 glGenFramebuffers:          .asciz "        glGenFramebuffers"
 glBindFramebuffer:          .asciz "        glBindFramebuffer"
@@ -202,6 +203,7 @@ LoadOpenGlMethods:
 
     LOAD_METHOD glActiveTexture
     LOAD_METHOD glTexImage3D
+    LOAD_METHOD glTexSubImage3D
 
     LOAD_METHOD glGenFramebuffers
     LOAD_METHOD glBindFramebuffer

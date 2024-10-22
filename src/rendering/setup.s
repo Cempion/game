@@ -7,6 +7,9 @@
 .equ VIEW_WIDTH, 16
 .equ VIEW_HEIGHT, 9
 
+.extern load_image
+.extern free_image
+
 .data
 
 render_shader_program: .quad 0 # the shader program responsible for rendering the game to the scene texture (casts rays & stuff)
@@ -56,6 +59,9 @@ raycaster_frag_shader:  .asciz "        shaders\\raycasting\\raycaster.frag"
 pass_vert_shader:       .asciz "        shaders\\pass.vert"
 display_frag_shader:    .asciz "        shaders\\display.frag"
 
+stbi_width: .quad 0
+stbi_height: .quad 0
+
 .text
 
 # uniform names
@@ -69,6 +75,11 @@ block_uniform: .asciz "blockData"
 
 textures_uniform: .asciz "textures"
 textures_entities_uniform: .asciz "entityTextures"
+
+# texture paths
+texture_monster: .asciz "textures\\Monster.png"
+texture_spider: .asciz "textures\\Spider.png"
+texture_ravager: .asciz "textures\\Ravager.png"
 
 read_mode: .asciz "rb" # mode to use when reading shader code, rd = read binary
 
@@ -398,10 +409,61 @@ SetupRenderer:
     call glTexParameteri
 
     # target, level, internal_format, width, height, depth, border, external_format, type, data (uninitialized)
-    PARAMS10 $GL_TEXTURE_2D_ARRAY, $0, $GL_RGBA8, $32, $32, $3, $0, $GL_RGBA, $GL_UNSIGNED_BYTE, $0
+    PARAMS10 $GL_TEXTURE_2D_ARRAY, $0, $GL_RGBA8, $32, $32, $4, $0, $GL_RGBA, $GL_UNSIGNED_BYTE, $0
     SHADOW_SPACE
     call *glTexImage3D(%rip)
     add $80, %rsp                           # restore stack pointer
+
+    # load monster texture
+
+    leaq texture_monster(%rip), %rcx
+    leaq stbi_width(%rip), %rdx
+    leaq stbi_height(%rip), %r8
+    call load_image
+
+    # target, level, x offset, y offset, z offset, width, height, depth, external_format, type, data (uninitialized)
+    push %rax
+    PARAMS11 $GL_TEXTURE_2D_ARRAY, $0, $0, $0, $1, $32, $32, $1, $GL_RGBA, $GL_UNSIGNED_BYTE, %rax
+    SHADOW_SPACE
+    call *glTexSubImage3D(%rip)
+    add $88, %rsp                           # restore stack pointer
+
+    pop %rcx
+    call free_image
+
+    # load spider texture
+
+    leaq texture_spider(%rip), %rcx
+    leaq stbi_width(%rip), %rdx
+    leaq stbi_height(%rip), %r8
+    call load_image
+
+    # target, level, x offset, y offset, z offset, width, height, depth, external_format, type, data (uninitialized)
+    push %rax
+    PARAMS11 $GL_TEXTURE_2D_ARRAY, $0, $0, $0, $2, $32, $32, $1, $GL_RGBA, $GL_UNSIGNED_BYTE, %rax
+    SHADOW_SPACE
+    call *glTexSubImage3D(%rip)
+    add $88, %rsp                           # restore stack pointer
+
+    pop %rcx
+    call free_image
+
+    # load ravager texture
+
+    leaq texture_ravager(%rip), %rcx
+    leaq stbi_width(%rip), %rdx
+    leaq stbi_height(%rip), %r8
+    call load_image
+
+    # target, level, x offset, y offset, z offset, width, height, depth, external_format, type, data (uninitialized)
+    push %rax
+    PARAMS11 $GL_TEXTURE_2D_ARRAY, $0, $0, $0, $3, $32, $32, $1, $GL_RGBA, $GL_UNSIGNED_BYTE, %rax
+    SHADOW_SPACE
+    call *glTexSubImage3D(%rip)
+    add $88, %rsp                           # restore stack pointer
+
+    pop %rcx
+    call free_image
 
     #----------------------------------------------------------------------------------------------------------
     # Camera UBO

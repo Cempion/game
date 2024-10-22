@@ -4,7 +4,7 @@
 spider_size: .float 0.5
 spider_height: .float 1
 # half width, half height (in pixels), texture index
-spider_texture: .byte 0x22, 2
+spider_texture: .byte 0x11, 2
 
 spider_acceleration: .float 0.01
 
