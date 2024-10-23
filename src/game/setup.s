@@ -6,7 +6,7 @@
 
 .data
 
-player_start: .float 8, 8
+player_start: .float 10, 10
 test_start1: .float 64, 64
 
 .text
@@ -39,7 +39,7 @@ SetupGame:
     call MakeList
     movq %rax, loaded_tiles(%rip)
 
-    PARAMS3 map_wfc(%rip), $0, $25
+    PARAMS3 map_wfc(%rip), $0, $12
     call CollapseToTile
 
     #----------------------------------------------------------------------------------------------------------
