@@ -16,7 +16,7 @@ camera:
     .float 0 # fov
     .float 0 # aspect ratio (view width / view height)
 
-mouse_sensitivity: .float 500 # low numbers mean high sensitivity
+mouse_sensitivity: .float 750 # low numbers mean high sensitivity
 
 .text
 

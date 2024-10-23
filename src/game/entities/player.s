@@ -9,6 +9,8 @@ player_texture: .byte 0x32, 0
 player_walk_acceleration: .float 0.005
 player_run_multiplier: .float 3
 
+is_player_alive: .byte 1
+
 .text
 
 #----------------------------------------------------------------------------------------------------------
@@ -48,6 +50,10 @@ DoKeyControls:
     push %r13 
     push %r14
     push %r15
+
+    cmpb $0, is_player_alive(%rip)                  # if player is dead
+    je 6f                                           # you cannot move
+
     SHADOW_SPACE
 
     leaq pressed_keys(%rip), %r12                   # get pointer to pressed keys
@@ -134,6 +140,8 @@ DoKeyControls:
     movsd %xmm1, (%rcx, %r13, 8)
 
     CLEAN_SHADOW
+
+    6: # return
     pop %r15
     pop %r14
     pop %r13

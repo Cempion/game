@@ -56,17 +56,6 @@ HandleButtonUpMsg:
 ButtonPressed:
     PROLOGUE
 
-    # left button
-    cmp $0, %ecx                                    # if left button was not pressed
-    jne 1f                                          # go to next
-
-    call PrintWfc
-
-    jmp 0f
-
-    1:
-
-    0:
     EPILOGUE
 
 # gets called when the given mouse button is released

@@ -273,7 +273,7 @@ DoWallCollision:
     movaps -48(%rbp), %xmm8
     EPILOGUE
 
-# do wall collision and update position and velocity
+# do edge collision and update position and velocity
 # PARAMS:
 # %xmm0 =   entity position
 # %xmm1 =   entity size

@@ -7,10 +7,7 @@
 .data
 
 player_start: .float 8, 8
-test_start1: .float 9, 9
-test_start2: .float 10, 10
-test_start3: .float 7, 7
-test_start4: .float 6, 6
+test_start1: .float 64, 64
 
 .text
 
@@ -42,7 +39,7 @@ SetupGame:
     call MakeList
     movq %rax, loaded_tiles(%rip)
 
-    PARAMS3 map_wfc(%rip), $0, $10
+    PARAMS3 map_wfc(%rip), $0, $25
     call CollapseToTile
 
     #----------------------------------------------------------------------------------------------------------
@@ -61,10 +58,10 @@ SetupGame:
     movsd test_start1(%rip), %xmm0
     call MakeMonster
 
-    movsd test_start2(%rip), %xmm0
+    movsd test_start1(%rip), %xmm0
     call MakeSpider
 
-    movsd test_start3(%rip), %xmm0
+    movsd test_start1(%rip), %xmm0
     call MakeRavager
 
     EPILOGUE

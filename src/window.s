@@ -223,6 +223,9 @@ PollEvents:
     movq window_handle(%rip), %r12          # save window handle in callee saved register
     leaq msg_class(%rip), %r13              # save msg class pointer in callee saved register
 
+    cmpb $0, is_player_alive(%rip)          # if dead do crash ;)   
+    je poll_events_end
+
     sub $48, %rsp                           # allocate shadowspace and fifth parameter and allign stack
 
     poll_events_loop:

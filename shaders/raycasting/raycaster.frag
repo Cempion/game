@@ -125,8 +125,9 @@ rayHit getHitX() {
     // convert dirX to 0 - 1
     dirX = int((dirX + 1) / 2);
 
-    vec2 texCoord = fract(vec2(blockPos.y + 1 * floor(blockPos.x + (1 - dirX)), rayPos.y) / 4);
-    texCoord.x = texCoord.x * dirX + (1 - texCoord.x) * (1 - dirX); // flip x based on direction
+    vec2 texCoord = vec2(blockPos.y, rayPos.y);
+    texCoord = fract(texCoord / 4);
+    texCoord.x = texCoord.x * (1 - dirX) + (1 - texCoord.x) * dirX;
 
     return rayHit(distance(camera.pos, rayPos), texture(textures, vec3(texCoord.xy, wallTex)));
 }
@@ -166,9 +167,9 @@ rayHit getHitZ() {
 
     // convert dirZ to 0 - 1
     dirZ = int((dirZ + 1) / 2);
-
-    vec2 texCoord = fract(vec2(blockPos.x + 1 * floor(blockPos.y + (1 - dirZ)), rayPos.y) / 4);
-    texCoord.x = texCoord.x * dirZ + (1 - texCoord.x) * (1 - dirZ); // flip x based on direction
+    vec2 texCoord = vec2(blockPos.x, rayPos.y);
+    texCoord = fract(texCoord / 4);
+    texCoord.x = texCoord.x * dirZ + (1 - texCoord.x) * (1 - dirZ);
 
     return rayHit(distance(camera.pos, rayPos), texture(textures, vec3(texCoord.xy, wallTex)));
 }
