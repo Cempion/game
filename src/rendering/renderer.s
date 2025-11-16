@@ -74,12 +74,12 @@ RenderFrame:
     PARAMS2 $GL_UNPACK_ALIGNMENT, $1
     call glPixelStorei
 
-    sub $8, %rsp                                # allign stack
+    sub $16, %rsp                                # allign stack
     # target, level, xOffset, yOffset, width, height, external_format, type, data
     PARAMS9 $GL_TEXTURE_2D, $0, $0, $0, $WFC_WIDTH, $WFC_HEIGHT, $GL_RED_INTEGER, $GL_UNSIGNED_BYTE, %rsi
     SHADOW_SPACE
     call glTexSubImage2D
-    add $80, %rsp                               # restore stack pointer
+    add $88, %rsp                               # restore stack pointer
 
     # update entity data
 
@@ -211,7 +211,9 @@ DoCameraControls:
     cmpb $0, 0x12(%rcx)                                 # if the alt key is not pressed
     jne 1f                                              # skip doing mouse controls
 
+    SHADOW_SPACE
     call GetForegroundWindow                            # get window on the foreground
+    CLEAN_SHADOW
     cmpq %rax, window_handle(%rip)                      # if the game window is not on the foreground
     jne 1f                                              # skip doing mouse controls
 

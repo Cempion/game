@@ -173,7 +173,7 @@ main:
     movq -8(%rbp), %r12
     movq -16(%rbp), %r13
 
-    # skip epilogue since it crashes program
+    EPILOGUE
 
     PARAMS1 $0
     call exit

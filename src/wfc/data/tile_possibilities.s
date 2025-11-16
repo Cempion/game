@@ -47,7 +47,7 @@ RegenTilePoss:
     sub %rax, %rcx                                          # 64 - maxPossibilities = amount of bits to shift
 
     movq $-1, %rax                                          # all bits 1
-    shr %rcx, %rax                                          # make all unused bits 0
+    shr %cl, %rax                                          # make all unused bits 0
 
     GP_TILE_POSS %rdi, %r8                                  # pointer to datastructure
     G_DATA_SIZE %ecx, %rdi                                  # size of data structure in bytes
