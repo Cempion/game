@@ -9,7 +9,7 @@ OUT = build
 
 # Rule to build the executable
 $(OUT): $(SRC)
-	$(AS) $(ASFLAGS) -o $(OUT) $(SRC) -O3 -lopengl32 -lgdi32
+	$(AS) $(ASFLAGS) -o $(OUT) $(SRC) -O3 -lopengl32 -lgdi32 -no-pie
 
 # Clean rule to remove the compiled output
 clean:
