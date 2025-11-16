@@ -46,4 +46,4 @@ All other game systems were implemented manually in assembly. This includes:
     .\build.exe
     ```
 
-Or simply download the build.exe file in the root of this repository!
+Or simply download the repository and run the build.exe already present in the project root!
